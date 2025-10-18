@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart' as app_auth;
 import '../../providers/app_provider.dart';
 import '../../constants/app_constants.dart';
-import 'dashboard_screen.dart';
-import '../meetings/meetings_screen.dart';
+import 'animated_dashboard_screen.dart';
+import '../meetings/animated_meetings_screen.dart';
 import '../announcements/announcements_screen.dart';
 import '../directory/directory_screen.dart';
 import '../documents/documents_screen.dart';
@@ -22,8 +22,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
-    const DashboardScreen(),
-    const MeetingsScreen(),
+    const AnimatedDashboardScreen(),
+    const AnimatedMeetingsScreen(),
     const AnnouncementsScreen(),
     const DocumentsScreen(),
     const MessagingScreen(),
