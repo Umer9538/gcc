@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_constants.dart';
+import '../../providers/auth_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -27,11 +30,19 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
 
     // Navigate after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        // Navigation handled by main.dart routing
+    _navigateAfterDelay();
+  }
+
+  void _navigateAfterDelay() async {
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.isAuthenticated) {
+        context.go('/home');
+      } else {
+        context.go('/login');
       }
-    });
+    }
   }
 
   @override
