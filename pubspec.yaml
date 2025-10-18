@@ -76,6 +76,13 @@ dependencies:
   # Navigation
   go_router: ^14.6.2
 
+  # Animations
+  animate_do: ^3.3.4
+  shimmer: ^3.0.0
+  lottie: ^3.1.3
+  flutter_staggered_animations: ^1.1.1
+  animated_text_kit: ^4.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
