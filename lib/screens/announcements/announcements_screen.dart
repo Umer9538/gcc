@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart' as app_auth;
 import '../../constants/app_constants.dart';
 import '../../services/announcement_service.dart';
 import '../../services/user_service.dart';
+import '../../services/permissions_service.dart';
 import '../../models/announcement_model.dart';
 import '../../models/user_model.dart';
 import '../../utils/date_utils.dart';
@@ -20,10 +21,12 @@ class AnnouncementsScreen extends StatefulWidget {
 class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   final AnnouncementService _announcementService = AnnouncementService();
   final UserService _userService = UserService();
+  final PermissionsService _permissionsService = PermissionsService();
   final TextEditingController _searchController = TextEditingController();
 
   AnnouncementPriority? _selectedPriority;
   String _searchQuery = '';
+  bool _canCreateAnnouncements = false;
 
   @override
   void initState() {
@@ -33,6 +36,22 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
         _searchQuery = _searchController.text.toLowerCase();
       });
     });
+    _checkPermissions();
+  }
+
+  Future<void> _checkPermissions() async {
+    final authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
+    final currentUser = authProvider.currentUser;
+
+    if (currentUser != null) {
+      final canCreate = await _permissionsService.hasPermission(
+        currentUser,
+        Permission.createAnnouncements,
+      );
+      setState(() {
+        _canCreateAnnouncements = canCreate;
+      });
+    }
   }
 
   @override
@@ -58,13 +77,15 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
             ),
             backgroundColor: AppColors.primaryColor,
             actions: [
-              if (currentUser?.roles.contains('admin') ?? false)
+              if (_canCreateAnnouncements)
                 IconButton(
                   icon: const Icon(Icons.add),
+                  tooltip: isRTL ? 'إنشاء إعلان' : 'Create Announcement',
                   onPressed: () => _showCreateAnnouncementDialog(context, isRTL, currentUser),
                 ),
               IconButton(
                 icon: const Icon(Icons.filter_list),
+                tooltip: isRTL ? 'تصفية' : 'Filter',
                 onPressed: () => _showFilterDialog(context, isRTL),
               ),
             ],
@@ -277,10 +298,11 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
               ],
             ),
           ),
-          floatingActionButton: (currentUser?.roles.contains('admin') ?? false)
+          floatingActionButton: _canCreateAnnouncements
               ? FloatingActionButton(
                   onPressed: () => _showCreateAnnouncementDialog(context, isRTL, currentUser),
                   backgroundColor: AppColors.primaryColor,
+                  tooltip: isRTL ? 'إنشاء إعلان' : 'Create Announcement',
                   child: const Icon(Icons.add),
                 )
               : null,
