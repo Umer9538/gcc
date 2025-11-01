@@ -224,7 +224,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                         child: SlideAnimation(
                           verticalOffset: 50.0,
                           child: FadeInAnimation(
-                            child: _buildMessageBubble(message, isRTL, isWeb),
+                            child: _buildMessageBubble(message, isRTL, isWeb, size),
                           ),
                         ),
                       );
@@ -251,7 +251,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message, bool isRTL, bool isWeb) {
+  Widget _buildMessageBubble(ChatMessage message, bool isRTL, bool isWeb, Size size) {
     final isUser = message.sender == MessageSender.user;
     final isSystem = message.sender == MessageSender.system;
 
