@@ -19,6 +19,7 @@ import '../directory/directory_screen.dart';
 import '../documents/documents_screen.dart';
 import '../workflow/workflow_screen.dart';
 import '../messaging/messaging_screen.dart';
+import '../chatbot/chatbot_screen.dart';
 
 class AnimatedDashboardScreen extends StatefulWidget {
   const AnimatedDashboardScreen({super.key});
@@ -137,6 +138,23 @@ class _AnimatedDashboardScreenState extends State<AnimatedDashboardScreen> {
 
                 const SizedBox(height: 24),
               ],
+            ),
+          ),
+          floatingActionButton: FadeInUp(
+            delay: const Duration(milliseconds: 800),
+            child: FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ChatbotScreen()),
+                );
+              },
+              backgroundColor: AppColors.secondaryColor,
+              icon: const Icon(Icons.smart_toy, color: Colors.white),
+              label: Text(
+                isRTL ? 'مساعد ذكي' : 'AI Assistant',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
             ),
           ),
         );
