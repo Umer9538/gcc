@@ -8,6 +8,7 @@ import '../../constants/app_constants.dart';
 import '../../services/user_service.dart';
 import '../../utils/date_utils.dart';
 import 'edit_profile_screen.dart';
+import '../debug/role_manager_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -205,6 +206,24 @@ class ProfileScreen extends StatelessWidget {
                                 // TODO: Toggle notifications
                               },
                             ),
+                          ),
+                          // DEBUG: Role Manager
+                          ListTile(
+                            leading: Icon(Icons.bug_report, color: Colors.orange),
+                            title: Text(
+                              'Role Manager (DEBUG)',
+                              style: TextStyle(color: Colors.orange),
+                            ),
+                            subtitle: Text('Change user roles for testing'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const RoleManagerScreen(),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
