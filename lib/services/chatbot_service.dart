@@ -9,9 +9,8 @@ class ChatbotService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Uuid _uuid = const Uuid();
 
-  // TODO: Replace with your actual Gemini API key
-  // Get your API key from: https://makersuite.google.com/app/apikey
-  static const String _geminiApiKey = 'YOUR_GEMINI_API_KEY_HERE';
+  // Gemini API key for AI chatbot functionality
+  static const String _geminiApiKey = 'AIzaSyAAOG47IKZuEVF8IcV5JDGRB8Maek-cO6I';
   static const String _geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
   // Context about GCC Connect app for better responses
