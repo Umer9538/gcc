@@ -118,13 +118,13 @@ class TestUserHelper {
         email: email,
         firstName: 'Test',
         lastName: 'Admin',
-        fullName: 'Test Admin',
         department: 'Administration',
         position: 'Administrator',
         phoneNumber: '+1234567890',
         roles: ['admin'],
         isActive: true,
         createdAt: DateTime.now(),
+        lastLogin: DateTime.now(),
       );
 
       await _firestore.collection('users').doc(uid).set(userModel.toMap());
@@ -158,13 +158,13 @@ class TestUserHelper {
         email: email,
         firstName: 'Test',
         lastName: 'Manager',
-        fullName: 'Test Manager',
         department: 'Operations',
         position: 'Manager',
         phoneNumber: '+1234567890',
         roles: ['manager'],
         isActive: true,
         createdAt: DateTime.now(),
+        lastLogin: DateTime.now(),
       );
 
       await _firestore.collection('users').doc(uid).set(userModel.toMap());
