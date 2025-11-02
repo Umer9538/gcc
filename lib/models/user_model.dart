@@ -43,8 +43,8 @@ class UserModel {
       'profileImageUrl': profileImageUrl,
       'roles': roles,
       'isActive': isActive,
-      'createdAt': createdAt,
-      'lastLogin': lastLogin,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'lastLogin': Timestamp.fromDate(lastLogin),
     };
   }
 

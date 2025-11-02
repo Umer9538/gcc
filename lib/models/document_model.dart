@@ -49,8 +49,8 @@ class DocumentModel {
       'allowedRoles': allowedRoles,
       'allowedDepartments': allowedDepartments,
       'category': category.toString(),
-      'createdAt': createdAt,
-      'lastModified': lastModified,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'lastModified': lastModified != null ? Timestamp.fromDate(lastModified!) : null,
       'isActive': isActive,
     };
   }

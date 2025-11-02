@@ -39,8 +39,8 @@ class AnnouncementModel {
       'targetGroups': targetGroups,
       'targetDepartments': targetDepartments,
       'priority': priority.toString(),
-      'createdAt': createdAt,
-      'expiryDate': expiryDate,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'expiryDate': expiryDate != null ? Timestamp.fromDate(expiryDate!) : null,
       'isActive': isActive,
       'readBy': readBy,
     };

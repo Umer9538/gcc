@@ -36,16 +36,16 @@ class MeetingModel {
       'id': id,
       'title': title,
       'description': description,
-      'startTime': startTime,
-      'endTime': endTime,
+      'startTime': Timestamp.fromDate(startTime),
+      'endTime': Timestamp.fromDate(endTime),
       'location': location,
       'organizerId': organizerId,
       'organizerName': organizerName,
       'attendeeIds': attendeeIds,
       'attendeeNames': attendeeNames,
       'status': status.toString(),
-      'createdAt': createdAt,
-      'reminderTime': reminderTime,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'reminderTime': reminderTime != null ? Timestamp.fromDate(reminderTime!) : null,
     };
   }
 

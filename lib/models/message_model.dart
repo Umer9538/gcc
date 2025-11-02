@@ -36,7 +36,7 @@ class MessageModel {
       'chatId': chatId,
       'conversationId': conversationId,
       'type': type.toString(),
-      'timestamp': timestamp,
+      'timestamp': Timestamp.fromDate(timestamp),
       'readBy': readBy,
       'isRead': isRead,
       'replyToId': replyToId,
@@ -95,8 +95,8 @@ class ChatModel {
       'type': type.toString(),
       'lastMessageId': lastMessageId,
       'lastMessageContent': lastMessageContent,
-      'lastMessageTime': lastMessageTime,
-      'createdAt': createdAt,
+      'lastMessageTime': lastMessageTime != null ? Timestamp.fromDate(lastMessageTime!) : null,
+      'createdAt': Timestamp.fromDate(createdAt),
     };
   }
 
