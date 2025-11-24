@@ -18,8 +18,7 @@ class AnnouncementService {
     return _firestore
         .collection('announcements')
         .where('isActive', isEqualTo: true)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
+        .snapshots()  // Removed orderBy to avoid composite index requirement
         .map((snapshot) {
       print('📢 Total announcements from DB: ${snapshot.docs.length}');
 
@@ -66,6 +65,9 @@ class AnnouncementService {
         print('   ❌ HIDE - No match');
         return false;
       }).toList();
+
+      // Sort in memory by createdAt (newest first)
+      filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       print('📊 Filtered announcements: ${filtered.length}');
       return filtered;

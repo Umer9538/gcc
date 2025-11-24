@@ -1,9 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/document_model.dart';
 import '../models/notification_model.dart';
 import 'notification_service.dart';
+
+// Conditional import for File (only on mobile)
+import 'dart:io' if (dart.library.html) 'dart:html' as io;
 
 class DocumentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -47,7 +52,8 @@ class DocumentService {
   Future<String> uploadDocument({
     required String title,
     required String description,
-    required String filePath,
+    String? filePath,
+    Uint8List? fileBytes,
     required String fileName,
     required String fileType,
     required double fileSize,
@@ -62,7 +68,48 @@ class DocumentService {
 
     final Reference ref = _storage.ref().child(storagePath);
 
-    final String downloadUrl = await ref.getDownloadURL();
+    String downloadUrl;
+
+    try {
+      print('📤 Starting file upload...');
+      print('   File name: $fileName');
+      print('   File type: $fileType');
+      print('   File size: $fileSize bytes');
+      print('   Is Web: $kIsWeb');
+
+      // Upload the file
+      if (kIsWeb && fileBytes != null) {
+        print('   Using web upload (bytes)');
+        print('   Bytes length: ${fileBytes.length}');
+
+        // For web, use bytes
+        final uploadTask = await ref.putData(
+          fileBytes,
+          SettableMetadata(
+            contentType: _getContentType(fileType),
+          ),
+        );
+
+        print('   Upload complete, getting download URL...');
+        downloadUrl = await uploadTask.ref.getDownloadURL();
+        print('   Download URL: $downloadUrl');
+      } else if (!kIsWeb && filePath != null) {
+        // For mobile, use file path
+        final file = io.File(filePath);
+        final uploadTask = await ref.putFile(
+          file,
+          SettableMetadata(
+            contentType: _getContentType(fileType),
+          ),
+        );
+        downloadUrl = await uploadTask.ref.getDownloadURL();
+      } else {
+        throw Exception('No file data provided for upload');
+      }
+    } catch (e) {
+      print('Error uploading file: $e');
+      throw Exception('Failed to upload file: $e');
+    }
 
     final document = DocumentModel(
       id: documentId,
@@ -86,6 +133,29 @@ class DocumentService {
         .set(document.toMap());
 
     return documentId;
+  }
+
+  String _getContentType(String fileType) {
+    switch (fileType.toLowerCase()) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xls':
+        return 'application/vnd.ms-excel';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'txt':
+        return 'text/plain';
+      default:
+        return 'application/octet-stream';
+    }
   }
 
   Future<String> requestDocumentAccess({

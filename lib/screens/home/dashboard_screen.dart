@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/auth_provider.dart' as app_auth;
@@ -9,6 +10,8 @@ import '../../services/meeting_service.dart';
 import '../../services/announcement_service.dart';
 import '../../models/meeting_model.dart';
 import '../../models/announcement_model.dart';
+import '../../widgets/loading_overlay.dart';
+import '../../widgets/shimmer_loading.dart';
 import '../meetings/meetings_screen.dart';
 import '../announcements/announcements_screen.dart';
 import '../directory/directory_screen.dart';
@@ -144,11 +147,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           subtitle: isRTL ? 'إنشاء اجتماع جديد' : 'Create new meeting',
                           color: AppColors.gentleGreen,
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const MeetingsScreen(),
-                              ),
+                            context.navigateWithLoading(
+                              const MeetingsScreen(),
+                              loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...',
                             );
                           },
                         ),
@@ -159,11 +160,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           subtitle: isRTL ? 'إنشاء إعلان جديد' : 'Create new announcement',
                           color: AppColors.gentleOrange,
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const AnnouncementsScreen(),
-                              ),
+                            context.navigateWithLoading(
+                              const AnnouncementsScreen(),
+                              loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...',
                             );
                           },
                         ),
@@ -174,11 +173,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           subtitle: isRTL ? 'الوصول للوثائق' : 'Access documents',
                           color: AppColors.gentlePurple,
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const DocumentsScreen(),
-                              ),
+                            context.navigateWithLoading(
+                              const DocumentsScreen(),
+                              loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...',
                             );
                           },
                         ),
@@ -189,11 +186,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           subtitle: isRTL ? 'تتبع الطلبات والمعاملات' : 'Track requests and transactions',
                           color: AppColors.infoColor,
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const WorkflowScreen(),
-                              ),
+                            context.navigateWithLoading(
+                              const WorkflowScreen(),
+                              loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...',
                             );
                           },
                         ),
@@ -204,11 +199,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           subtitle: isRTL ? 'البحث عن الزملاء' : 'Find colleagues',
                           color: AppColors.gentlePink,
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const DirectoryScreen(),
-                              ),
+                            context.navigateWithLoading(
+                              const DirectoryScreen(),
+                              loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...',
                             );
                           },
                         ),
@@ -219,11 +212,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           subtitle: isRTL ? 'بدء محادثة جديدة' : 'Start new conversation',
                           color: AppColors.secondaryColor,
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const MessagingScreen(),
-                              ),
+                            context.navigateWithLoading(
+                              const MessagingScreen(),
+                              loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...',
                             );
                           },
                         ),
@@ -364,10 +355,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             StreamBuilder<List<MeetingModel>>(
               stream: _meetingService.getTodaysMeetingsStream(userId),
               builder: (context, snapshot) {
+                final size = MediaQuery.of(context).size;
+                final isWeb = kIsWeb || size.width > 800;
+
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return ShimmerLoading.compact(isWeb: isWeb, count: 3);
                 }
 
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -462,11 +454,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 TextButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AnnouncementsScreen(),
-                      ),
+                    context.navigateWithLoading(
+                      const AnnouncementsScreen(),
+                      loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...',
                     );
                   },
                   child: Text(
@@ -488,10 +478,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 userRoles: user?.roles ?? [],
               ),
               builder: (context, snapshot) {
+                final size = MediaQuery.of(context).size;
+                final isWeb = kIsWeb || size.width > 800;
+
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return ShimmerLoading.compact(isWeb: isWeb, count: 3);
                 }
 
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {

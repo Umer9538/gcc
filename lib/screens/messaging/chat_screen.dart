@@ -142,8 +142,45 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: StreamBuilder<List<MessageModel>>(
                   stream: _messagingService.getConversationMessages(_conversationId),
                   builder: (context, snapshot) {
+                    print('Stream state: ${snapshot.connectionState}');
+                    print('Has data: ${snapshot.hasData}');
+                    print('Data length: ${snapshot.data?.length}');
+                    print('Has error: ${snapshot.hasError}');
+                    if (snapshot.hasError) {
+                      print('Stream error: ${snapshot.error}');
+                      print('Stack trace: ${snapshot.stackTrace}');
+                    }
+
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(height: AppConstants.defaultPadding),
+                            Text(
+                              'Error loading messages',
+                              style: AppTextStyles.heading3.copyWith(
+                                color: Colors.red,
+                              ),
+                            ),
+                            const SizedBox(height: AppConstants.smallPadding),
+                            Text(
+                              '${snapshot.error}',
+                              style: AppTextStyles.bodySmall,
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      );
                     }
 
                     if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -380,9 +417,15 @@ class _ChatScreenState extends State<ChatScreen> {
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
 
+    // Clear input immediately for better UX
     _messageController.clear();
 
     try {
+      print('Sending message: $content');
+      print('Conversation ID: $_conversationId');
+      print('Sender: ${widget.currentUser.id}');
+      print('Receiver: ${widget.otherUser.id}');
+
       await _messagingService.sendMessage(
         conversationId: _conversationId,
         senderId: widget.currentUser.id,
@@ -391,14 +434,29 @@ class _ChatScreenState extends State<ChatScreen> {
         content: content,
       );
 
-      _scrollToBottom();
-    } catch (e) {
+      print('Message sent successfully');
+
+      // Scroll to bottom after sending
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          _scrollToBottom();
+        }
+      });
+    } catch (e, stackTrace) {
+      print('Error sending message: $e');
+      print('Stack trace: $stackTrace');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to send message'),
+          SnackBar(
+            content: Text('Failed to send message: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
+
+        // Restore the message to the input field
+        _messageController.text = content;
       }
     }
   }

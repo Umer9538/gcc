@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/app_provider.dart';
@@ -10,6 +11,7 @@ import '../../services/permissions_service.dart';
 import '../../models/announcement_model.dart';
 import '../../models/user_model.dart';
 import '../../utils/date_utils.dart';
+import '../../widgets/shimmer_loading.dart';
 
 class AnnouncementsScreen extends StatefulWidget {
   const AnnouncementsScreen({super.key});
@@ -27,6 +29,10 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   AnnouncementPriority? _selectedPriority;
   String _searchQuery = '';
   bool _canCreateAnnouncements = false;
+  String? _selectedDepartment;
+  String? _selectedAuthor;
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   @override
   void initState() {
@@ -36,21 +42,26 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
         _searchQuery = _searchController.text.toLowerCase();
       });
     });
-    _checkPermissions();
+    // Check permissions asynchronously without blocking UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPermissions();
+    });
   }
 
   Future<void> _checkPermissions() async {
     final authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
     final currentUser = authProvider.currentUser;
 
-    if (currentUser != null) {
+    if (currentUser != null && mounted) {
       final canCreate = await _permissionsService.hasPermission(
         currentUser,
         Permission.createAnnouncements,
       );
-      setState(() {
-        _canCreateAnnouncements = canCreate;
-      });
+      if (mounted) {
+        setState(() {
+          _canCreateAnnouncements = canCreate;
+        });
+      }
     }
   }
 
@@ -83,10 +94,35 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                   tooltip: isRTL ? 'إنشاء إعلان' : 'Create Announcement',
                   onPressed: () => _showCreateAnnouncementDialog(context, isRTL, currentUser),
                 ),
-              IconButton(
-                icon: const Icon(Icons.filter_list),
-                tooltip: isRTL ? 'تصفية' : 'Filter',
-                onPressed: () => _showFilterDialog(context, isRTL),
+              Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.filter_list),
+                    tooltip: isRTL ? 'تصفية' : 'Filter',
+                    onPressed: () => _showFilterDialog(context, isRTL),
+                  ),
+                  // Show badge if filters are active
+                  if (_selectedDepartment != null || _selectedAuthor != null || _startDate != null || _endDate != null)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppColors.errorColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '${[_selectedDepartment, _selectedAuthor, _startDate, _endDate].where((f) => f != null).length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
@@ -180,8 +216,11 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                       userRoles: currentUser?.roles ?? [],
                     ),
                     builder: (context, snapshot) {
+                      final size = MediaQuery.of(context).size;
+                      final isWeb = kIsWeb || size.width > 800;
+
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
+                        return ShimmerLoading.listItem(isWeb: isWeb, count: 5);
                       }
 
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -202,6 +241,37 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                             .where((a) =>
                                 a.title.toLowerCase().contains(_searchQuery) ||
                                 a.content.toLowerCase().contains(_searchQuery))
+                            .toList();
+                      }
+
+                      // Filter by department
+                      if (_selectedDepartment != null && _selectedDepartment!.isNotEmpty) {
+                        announcements = announcements
+                            .where((a) =>
+                                a.targetDepartments.isEmpty ||
+                                a.targetDepartments.contains(_selectedDepartment) ||
+                                a.targetGroups.contains('all'))
+                            .toList();
+                      }
+
+                      // Filter by author
+                      if (_selectedAuthor != null && _selectedAuthor!.isNotEmpty) {
+                        announcements = announcements
+                            .where((a) => a.authorName.toLowerCase().contains(_selectedAuthor!.toLowerCase()))
+                            .toList();
+                      }
+
+                      // Filter by date range
+                      if (_startDate != null) {
+                        announcements = announcements
+                            .where((a) => a.createdAt.isAfter(_startDate!))
+                            .toList();
+                      }
+
+                      if (_endDate != null) {
+                        final endOfDay = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+                        announcements = announcements
+                            .where((a) => a.createdAt.isBefore(endOfDay))
                             .toList();
                       }
 
@@ -633,17 +703,252 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   }
 
   void _showFilterDialog(BuildContext context, bool isRTL) {
+    String? tempDepartment = _selectedDepartment;
+    String? tempAuthor = _selectedAuthor;
+    DateTime? tempStartDate = _startDate;
+    DateTime? tempEndDate = _endDate;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isRTL ? 'خيارات التصفية' : 'Filter Options'),
-        content: Text(isRTL ? 'قريباً...' : 'Coming soon...'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(isRTL ? 'إغلاق' : 'Close'),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.filter_list, color: AppColors.primaryColor),
+              const SizedBox(width: 8),
+              Text(isRTL ? 'تصفية الإعلانات' : 'Filter Announcements'),
+            ],
           ),
-        ],
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 400,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Department Filter
+                  Text(
+                    isRTL ? 'القسم' : 'Department',
+                    style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: tempDepartment,
+                    decoration: InputDecoration(
+                      hintText: isRTL ? 'جميع الأقسام' : 'All Departments',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surfaceColor,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(isRTL ? 'جميع الأقسام' : 'All Departments'),
+                      ),
+                      ...AppConstants.departments.map((dept) {
+                        return DropdownMenuItem(
+                          value: dept,
+                          child: Text(
+                            isRTL ? (AppConstants.departmentTranslations[dept] ?? dept) : dept,
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                    onChanged: (value) {
+                      setDialogState(() {
+                        tempDepartment = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Author Filter
+                  Text(
+                    isRTL ? 'المؤلف' : 'Author',
+                    style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: isRTL ? 'اسم المؤلف...' : 'Author name...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surfaceColor,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      prefixIcon: const Icon(Icons.person_outline),
+                    ),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        tempAuthor = value.isEmpty ? null : value;
+                      });
+                    },
+                    controller: TextEditingController(text: tempAuthor ?? ''),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Date Range Filter
+                  Text(
+                    isRTL ? 'نطاق التاريخ' : 'Date Range',
+                    style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.calendar_today, size: 16),
+                          label: Text(
+                            tempStartDate != null
+                                ? '${tempStartDate!.day}/${tempStartDate!.month}/${tempStartDate!.year}'
+                                : (isRTL ? 'من تاريخ' : 'From Date'),
+                            style: AppTextStyles.bodySmall,
+                          ),
+                          onPressed: () async {
+                            final date = await showDatePicker(
+                              context: context,
+                              initialDate: tempStartDate ?? DateTime.now(),
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime.now().add(const Duration(days: 365)),
+                            );
+                            if (date != null) {
+                              setDialogState(() {
+                                tempStartDate = date;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.calendar_today, size: 16),
+                          label: Text(
+                            tempEndDate != null
+                                ? '${tempEndDate!.day}/${tempEndDate!.month}/${tempEndDate!.year}'
+                                : (isRTL ? 'إلى تاريخ' : 'To Date'),
+                            style: AppTextStyles.bodySmall,
+                          ),
+                          onPressed: () async {
+                            final date = await showDatePicker(
+                              context: context,
+                              initialDate: tempEndDate ?? DateTime.now(),
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime.now().add(const Duration(days: 365)),
+                            );
+                            if (date != null) {
+                              setDialogState(() {
+                                tempEndDate = date;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Active Filters Summary
+                  if (tempDepartment != null || tempAuthor != null || tempStartDate != null || tempEndDate != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.primaryColor.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isRTL ? 'الفلاتر النشطة:' : 'Active Filters:',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          if (tempDepartment != null)
+                            Text('• ${isRTL ? 'القسم' : 'Department'}: $tempDepartment', style: AppTextStyles.bodySmall),
+                          if (tempAuthor != null)
+                            Text('• ${isRTL ? 'المؤلف' : 'Author'}: $tempAuthor', style: AppTextStyles.bodySmall),
+                          if (tempStartDate != null)
+                            Text('• ${isRTL ? 'من' : 'From'}: ${tempStartDate!.day}/${tempStartDate!.month}/${tempStartDate!.year}', style: AppTextStyles.bodySmall),
+                          if (tempEndDate != null)
+                            Text('• ${isRTL ? 'إلى' : 'To'}: ${tempEndDate!.day}/${tempEndDate!.month}/${tempEndDate!.year}', style: AppTextStyles.bodySmall),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            // Clear Filters
+            if (tempDepartment != null || tempAuthor != null || tempStartDate != null || tempEndDate != null)
+              TextButton.icon(
+                icon: const Icon(Icons.clear_all),
+                label: Text(isRTL ? 'مسح الكل' : 'Clear All'),
+                onPressed: () {
+                  setDialogState(() {
+                    tempDepartment = null;
+                    tempAuthor = null;
+                    tempStartDate = null;
+                    tempEndDate = null;
+                  });
+                },
+              ),
+            // Cancel
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+            ),
+            // Apply
+            ElevatedButton.icon(
+              icon: const Icon(Icons.check, color: Colors.white),
+              label: Text(
+                isRTL ? 'تطبيق' : 'Apply',
+                style: const TextStyle(color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryColor,
+              ),
+              onPressed: () {
+                setState(() {
+                  _selectedDepartment = tempDepartment;
+                  _selectedAuthor = tempAuthor;
+                  _startDate = tempStartDate;
+                  _endDate = tempEndDate;
+                });
+                Navigator.pop(context);
+
+                // Show snackbar with applied filters
+                final filterCount = [tempDepartment, tempAuthor, tempStartDate, tempEndDate]
+                    .where((f) => f != null)
+                    .length;
+                if (filterCount > 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isRTL
+                            ? 'تم تطبيق $filterCount فلتر'
+                            : '$filterCount filter(s) applied',
+                      ),
+                      backgroundColor: AppColors.successColor,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

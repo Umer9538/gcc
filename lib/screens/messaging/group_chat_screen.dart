@@ -391,9 +391,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
 
+    // Clear input immediately for better UX
     _messageController.clear();
 
     try {
+      print('Sending group message: $content');
+      print('Group ID: ${widget.group.id}');
+      print('Sender: ${widget.currentUser.id}');
+
       await _messagingService.sendGroupMessage(
         groupId: widget.group.id,
         senderId: widget.currentUser.id,
@@ -401,18 +406,33 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         content: content,
       );
 
-      _scrollToBottom();
-    } catch (e) {
+      print('Group message sent successfully');
+
+      // Scroll to bottom after sending
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          _scrollToBottom();
+        }
+      });
+    } catch (e, stackTrace) {
+      print('Error sending group message: $e');
+      print('Stack trace: $stackTrace');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               Provider.of<AppProvider>(context, listen: false).isRTL
-                  ? 'فشل في إرسال الرسالة'
-                  : 'Failed to send message',
+                  ? 'فشل في إرسال الرسالة: ${e.toString()}'
+                  : 'Failed to send message: ${e.toString()}',
             ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
+
+        // Restore the message to the input field
+        _messageController.text = content;
       }
     }
   }

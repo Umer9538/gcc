@@ -13,6 +13,7 @@ import '../../services/meeting_service.dart';
 import '../../services/announcement_service.dart';
 import '../../models/meeting_model.dart';
 import '../../models/announcement_model.dart';
+import '../../widgets/loading_overlay.dart';
 import '../meetings/meetings_screen.dart';
 import '../announcements/announcements_screen.dart';
 import '../directory/directory_screen.dart';
@@ -20,6 +21,7 @@ import '../documents/documents_screen.dart';
 import '../workflow/workflow_screen.dart';
 import '../messaging/messaging_screen.dart';
 import '../chatbot/chatbot_screen.dart';
+import '../admin/user_management_screen.dart';
 
 class AnimatedDashboardScreen extends StatefulWidget {
   const AnimatedDashboardScreen({super.key});
@@ -144,9 +146,9 @@ class _AnimatedDashboardScreenState extends State<AnimatedDashboardScreen> {
             delay: const Duration(milliseconds: 800),
             child: FloatingActionButton.extended(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ChatbotScreen()),
+                context.navigateWithLoading(
+                  const ChatbotScreen(),
+                  loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading AI Assistant...',
                 );
               },
               backgroundColor: AppColors.secondaryColor,
@@ -258,49 +260,61 @@ class _AnimatedDashboardScreenState extends State<AnimatedDashboardScreen> {
   }
 
   Widget _buildQuickActionsGrid(BuildContext context, bool isRTL, bool isWeb, bool isMobile) {
+    final authProvider = Provider.of<app_auth.AuthProvider>(context);
+    final user = authProvider.currentUser;
+    final isSuperAdmin = user?.roles.contains('super_admin') ?? false;
+
     final actions = [
       {
         'icon': Icons.event_available,
         'title': isRTL ? 'جدولة اجتماع' : 'Schedule Meeting',
         'subtitle': isRTL ? 'إنشاء اجتماع جديد' : 'Create new meeting',
         'color': AppColors.gentleGreen,
-        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MeetingsScreen())),
+        'onTap': () => context.navigateWithLoading(const MeetingsScreen(), loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...'),
       },
       {
         'icon': Icons.announcement,
         'title': isRTL ? 'إرسال إعلان' : 'Send Announcement',
         'subtitle': isRTL ? 'إنشاء إعلان جديد' : 'Create new announcement',
         'color': AppColors.gentleOrange,
-        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnnouncementsScreen())),
+        'onTap': () => context.navigateWithLoading(const AnnouncementsScreen(), loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...'),
       },
       {
         'icon': Icons.description,
         'title': isRTL ? 'الوثائق' : 'Documents',
         'subtitle': isRTL ? 'الوصول للوثائق' : 'Access documents',
         'color': AppColors.gentlePurple,
-        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DocumentsScreen())),
+        'onTap': () => context.navigateWithLoading(const DocumentsScreen(), loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...'),
       },
       {
         'icon': Icons.track_changes,
         'title': isRTL ? 'تتبع سير العمل' : 'Workflow Tracking',
         'subtitle': isRTL ? 'تتبع الطلبات' : 'Track requests',
         'color': AppColors.infoColor,
-        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkflowScreen())),
+        'onTap': () => context.navigateWithLoading(const WorkflowScreen(), loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...'),
       },
       {
         'icon': Icons.people_outline,
         'title': isRTL ? 'دليل الموظفين' : 'Employee Directory',
         'subtitle': isRTL ? 'البحث عن الزملاء' : 'Find colleagues',
         'color': AppColors.gentlePink,
-        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DirectoryScreen())),
+        'onTap': () => context.navigateWithLoading(const DirectoryScreen(), loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...'),
       },
       {
         'icon': Icons.message,
         'title': isRTL ? 'الرسائل' : 'Messages',
         'subtitle': isRTL ? 'بدء محادثة' : 'Start conversation',
         'color': AppColors.secondaryColor,
-        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MessagingScreen())),
+        'onTap': () => context.navigateWithLoading(const MessagingScreen(), loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...'),
       },
+      if (isSuperAdmin)
+        {
+          'icon': Icons.admin_panel_settings,
+          'title': isRTL ? 'إدارة المستخدمين' : 'User Management',
+          'subtitle': isRTL ? 'إدارة أدوار المستخدمين' : 'Manage user roles',
+          'color': const Color(0xFF9C27B0), // Purple for admin
+          'onTap': () => context.navigateWithLoading(const UserManagementScreen(), loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...'),
+        },
     ];
 
     return AnimationLimiter(
@@ -544,11 +558,9 @@ class _AnimatedDashboardScreenState extends State<AnimatedDashboardScreen> {
                 ),
                 TextButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AnnouncementsScreen(),
-                      ),
+                    context.navigateWithLoading(
+                      const AnnouncementsScreen(),
+                      loadingMessage: isRTL ? 'جارٍ التحميل...' : 'Loading...',
                     );
                   },
                   child: Text(

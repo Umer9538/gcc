@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/app_provider.dart';
 import '../../constants/app_constants.dart';
 import '../../services/user_service.dart';
 import '../../models/user_model.dart';
+import '../../widgets/shimmer_loading.dart';
 
 class DirectoryScreen extends StatefulWidget {
   const DirectoryScreen({super.key});
@@ -133,8 +135,11 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                   child: StreamBuilder<List<UserModel>>(
                     stream: _userService.getAllUsers(),
                     builder: (context, snapshot) {
+                      final size = MediaQuery.of(context).size;
+                      final isWeb = kIsWeb || size.width > 800;
+
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
+                        return ShimmerLoading.listItem(isWeb: isWeb, count: 8);
                       }
 
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {

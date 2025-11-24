@@ -10,6 +10,7 @@ import '../directory/directory_screen.dart';
 import '../documents/documents_screen.dart';
 import '../messaging/messaging_screen.dart';
 import '../profile/profile_screen.dart';
+import '../admin/super_admin_dashboard.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,21 +22,26 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = [
-    const AnimatedDashboardScreen(),
-    const AnimatedMeetingsScreen(),
-    const AnnouncementsScreen(),
-    const DocumentsScreen(),
-    const MessagingScreen(),
-    const DirectoryScreen(),
-    const ProfileScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Consumer2<app_auth.AuthProvider, AppProvider>(
       builder: (context, authProvider, appProvider, child) {
         final isRTL = appProvider.isRTL;
+        final user = authProvider.currentUser;
+        final isSuperAdmin = user?.roles.contains('super_admin') ?? false;
+
+        // Super Admin gets a different dashboard
+        final List<Widget> _screens = [
+          isSuperAdmin
+              ? const SuperAdminDashboard()
+              : const AnimatedDashboardScreen(),
+          const AnimatedMeetingsScreen(),
+          const AnnouncementsScreen(),
+          const DocumentsScreen(),
+          const MessagingScreen(),
+          const DirectoryScreen(),
+          const ProfileScreen(),
+        ];
 
         return Scaffold(
           body: _screens[_currentIndex],

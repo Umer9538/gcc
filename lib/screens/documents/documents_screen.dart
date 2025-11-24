@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,6 +9,11 @@ import '../../constants/app_constants.dart';
 import '../../services/document_service.dart';
 import '../../models/document_model.dart';
 import '../../utils/date_utils.dart';
+import '../../widgets/shimmer_loading.dart';
+import '../../services/permissions_service.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:typed_data';
+import 'dart:html' as html show FileUploadInputElement, File, FileReader;
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -78,6 +84,28 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
               _buildStatsTab(userId, currentUser, isRTL),
             ],
           ),
+          floatingActionButton: currentUser != null
+              ? FutureBuilder<bool>(
+                  future: PermissionsService().hasPermission(
+                    currentUser,
+                    Permission.uploadDocuments,
+                  ),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data == true) {
+                      return FloatingActionButton.extended(
+                        onPressed: () => _showUploadDocumentDialog(currentUser, isRTL),
+                        backgroundColor: AppColors.primaryColor,
+                        icon: const Icon(Icons.upload_file, color: Colors.white),
+                        label: Text(
+                          isRTL ? 'رفع وثيقة' : 'Upload Document',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                )
+              : const SizedBox.shrink(),
         );
       },
     );
@@ -144,8 +172,11 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
               userRoles: currentUser?.roles ?? [],
             ),
             builder: (context, snapshot) {
+              final size = MediaQuery.of(context).size;
+              final isWeb = kIsWeb || size.width > 800;
+
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return ShimmerLoading.listItem(isWeb: isWeb, count: 5);
               }
 
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -223,11 +254,14 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
   }
 
   Widget _buildMyRequestsTab(String userId, bool isRTL) {
+    final size = MediaQuery.of(context).size;
+    final isWeb = kIsWeb || size.width > 800;
+
     return StreamBuilder<List<DocumentRequestModel>>(
       stream: _documentService.getUserDocumentRequests(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return ShimmerLoading.listItem(isWeb: isWeb, count: 5);
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -252,11 +286,14 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
   }
 
   Widget _buildRequestsToReviewTab(String userId, bool isRTL) {
+    final size = MediaQuery.of(context).size;
+    final isWeb = kIsWeb || size.width > 800;
+
     return StreamBuilder<List<DocumentRequestModel>>(
       stream: _documentService.getPendingRequestsForUser(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return ShimmerLoading.listItem(isWeb: isWeb, count: 5);
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -281,6 +318,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
   }
 
   Widget _buildStatsTab(String userId, currentUser, bool isRTL) {
+    final size = MediaQuery.of(context).size;
+    final isWeb = kIsWeb || size.width > 800;
+
     return FutureBuilder<Map<String, int>>(
       future: _documentService.getDocumentStats(
         userId: userId,
@@ -289,7 +329,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return ShimmerLoading.gridItem(isWeb: isWeb, count: 4, crossAxisCount: 2);
         }
 
         if (!snapshot.hasData) {
@@ -922,5 +962,338 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
         ],
       ),
     );
+  }
+
+  Future<void> _showUploadDocumentDialog(currentUser, bool isRTL) async {
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+    DocumentCategory selectedCategory = DocumentCategory.general;
+    List<String> selectedRoles = [];
+    List<String> selectedDepartments = [];
+    PlatformFile? selectedFile;
+    bool isUploading = false;
+
+    final size = MediaQuery.of(context).size;
+    final isWeb = kIsWeb || size.width > 800;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isRTL ? 'رفع وثيقة جديدة' : 'Upload New Document'),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: isWeb ? 600 : double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title field
+                  TextField(
+                    controller: titleController,
+                    decoration: InputDecoration(
+                      labelText: isRTL ? 'عنوان الوثيقة *' : 'Document Title *',
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Description field
+                  TextField(
+                    controller: descriptionController,
+                    decoration: InputDecoration(
+                      labelText: isRTL ? 'الوصف' : 'Description',
+                      border: const OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Category dropdown
+                  DropdownButtonFormField<DocumentCategory>(
+                    value: selectedCategory,
+                    decoration: InputDecoration(
+                      labelText: isRTL ? 'الفئة *' : 'Category *',
+                      border: const OutlineInputBorder(),
+                    ),
+                    items: DocumentCategory.values.map((category) {
+                      return DropdownMenuItem(
+                        value: category,
+                        child: Text(_getCategoryName(category, isRTL)),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedCategory = value ?? DocumentCategory.general;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // File picker
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.attach_file),
+                      title: Text(
+                        selectedFile != null
+                            ? selectedFile!.name
+                            : (isRTL ? 'اختر ملف *' : 'Choose File *'),
+                      ),
+                      subtitle: selectedFile != null
+                          ? Text('${(selectedFile!.size / 1024).toStringAsFixed(2)} KB')
+                          : null,
+                      trailing: const Icon(Icons.upload_file),
+                      onTap: () async {
+                        try {
+                          if (kIsWeb) {
+                            // Use HTML file input for web
+                            final uploadInput = html.FileUploadInputElement();
+                            uploadInput.accept = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt';
+                            uploadInput.click();
+
+                            await uploadInput.onChange.first;
+
+                            if (uploadInput.files!.isNotEmpty) {
+                              final file = uploadInput.files![0];
+                              final reader = html.FileReader();
+                              reader.readAsArrayBuffer(file);
+
+                              await reader.onLoad.first;
+
+                              final bytes = reader.result as Uint8List;
+                              final fileName = file.name;
+                              final fileSize = file.size;
+                              final extension = fileName.split('.').last;
+
+                              setDialogState(() {
+                                selectedFile = PlatformFile(
+                                  name: fileName,
+                                  size: fileSize,
+                                  bytes: bytes,
+                                  path: null,
+                                );
+                              });
+                            }
+                          } else {
+                            // For mobile, use file_picker
+                            final result = await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'],
+                            );
+
+                            if (result != null && result.files.isNotEmpty) {
+                              setDialogState(() {
+                                selectedFile = result.files.first;
+                              });
+                            }
+                          }
+                        } catch (e) {
+                          print('Error picking file: $e');
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  isRTL
+                                      ? 'فشل في اختيار الملف: $e'
+                                      : 'Failed to pick file: $e',
+                                ),
+                                backgroundColor: AppColors.errorColor,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Allowed Roles (optional)
+                  Text(
+                    isRTL ? 'السماح للأدوار (اختياري):' : 'Allowed Roles (optional):',
+                    style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: ['super_admin', 'admin', 'hr', 'manager', 'employee'].map((role) {
+                      return FilterChip(
+                        label: Text(_getRoleDisplayName(role, isRTL)),
+                        selected: selectedRoles.contains(role),
+                        onSelected: (selected) {
+                          setDialogState(() {
+                            if (selected) {
+                              selectedRoles.add(role);
+                            } else {
+                              selectedRoles.remove(role);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Allowed Departments (optional)
+                  Text(
+                    isRTL ? 'السماح للأقسام (اختياري):' : 'Allowed Departments (optional):',
+                    style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: AppConstants.departments.map((dept) {
+                      return FilterChip(
+                        label: Text(dept),
+                        selected: selectedDepartments.contains(dept),
+                        onSelected: (selected) {
+                          setDialogState(() {
+                            if (selected) {
+                              selectedDepartments.add(dept);
+                            } else {
+                              selectedDepartments.remove(dept);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 8),
+
+                  Text(
+                    isRTL
+                        ? 'ملاحظة: إذا لم تختر أدوار أو أقسام، ستكون الوثيقة متاحة للجميع'
+                        : 'Note: If no roles or departments selected, document will be available to everyone',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondaryColor,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+
+                  if (isUploading) ...[
+                    const SizedBox(height: 16),
+                    const LinearProgressIndicator(),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        isRTL ? 'جاري رفع الوثيقة...' : 'Uploading document...',
+                        style: AppTextStyles.bodySmall,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isUploading ? null : () => Navigator.pop(context),
+              child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isUploading
+                  ? null
+                  : () async {
+                      if (titleController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isRTL ? 'الرجاء إدخال عنوان الوثيقة' : 'Please enter document title',
+                            ),
+                            backgroundColor: AppColors.errorColor,
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (selectedFile == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isRTL ? 'الرجاء اختيار ملف' : 'Please select a file',
+                            ),
+                            backgroundColor: AppColors.errorColor,
+                          ),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() {
+                        isUploading = true;
+                      });
+
+                      try {
+                        await _documentService.uploadDocument(
+                          title: titleController.text.trim(),
+                          description: descriptionController.text.trim(),
+                          filePath: !kIsWeb ? selectedFile!.path : null,
+                          fileBytes: kIsWeb ? selectedFile!.bytes : null,
+                          fileName: selectedFile!.name,
+                          fileType: selectedFile!.extension ?? '',
+                          fileSize: selectedFile!.size.toDouble(),
+                          uploadedById: currentUser.id,
+                          uploadedByName: currentUser.fullName,
+                          allowedRoles: selectedRoles,
+                          allowedDepartments: selectedDepartments,
+                          category: selectedCategory,
+                        );
+
+                        if (mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                isRTL ? 'تم رفع الوثيقة بنجاح' : 'Document uploaded successfully',
+                              ),
+                              backgroundColor: AppColors.successColor,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() {
+                          isUploading = false;
+                        });
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                isRTL
+                                    ? 'فشل رفع الوثيقة: $e'
+                                    : 'Failed to upload document: $e',
+                              ),
+                              backgroundColor: AppColors.errorColor,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryColor,
+              ),
+              child: Text(
+                isRTL ? 'رفع' : 'Upload',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getRoleDisplayName(String role, bool isRTL) {
+    switch (role) {
+      case 'super_admin':
+        return isRTL ? 'مسؤول عام' : 'Super Admin';
+      case 'admin':
+        return isRTL ? 'مسؤول' : 'Admin';
+      case 'hr':
+        return isRTL ? 'موارد بشرية' : 'HR';
+      case 'manager':
+        return isRTL ? 'مدير' : 'Manager';
+      case 'employee':
+        return isRTL ? 'موظف' : 'Employee';
+      default:
+        return role;
+    }
   }
 }

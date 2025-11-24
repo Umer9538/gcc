@@ -104,11 +104,21 @@ class MessagingService {
     return _firestore
         .collection('conversations')
         .where('participants', arrayContains: userId)
-        .orderBy('lastMessageTime', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ConversationModel.fromMap(doc.data()))
-            .toList());
+        .map((snapshot) {
+          print('Conversations snapshot: ${snapshot.docs.length} conversations');
+          final conversations = snapshot.docs
+              .map((doc) {
+                print('Conversation doc: ${doc.data()}');
+                return ConversationModel.fromMap(doc.data());
+              })
+              .toList();
+
+          // Sort in memory instead of Firestore query
+          conversations.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+
+          return conversations;
+        });
   }
 
   // Get user group conversations
@@ -116,11 +126,26 @@ class MessagingService {
     return _firestore
         .collection('group_conversations')
         .where('participants', arrayContains: userId)
-        .orderBy('lastMessageTime', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => GroupConversationModel.fromMap(doc.data()))
-            .toList());
+        .map((snapshot) {
+          print('Group conversations snapshot: ${snapshot.docs.length} groups');
+          final groups = snapshot.docs
+              .map((doc) {
+                print('Group doc: ${doc.data()}');
+                return GroupConversationModel.fromMap(doc.data());
+              })
+              .toList();
+
+          // Sort in memory instead of Firestore query
+          groups.sort((a, b) {
+            if (a.lastMessageTime == null && b.lastMessageTime == null) return 0;
+            if (a.lastMessageTime == null) return 1;
+            if (b.lastMessageTime == null) return -1;
+            return b.lastMessageTime!.compareTo(a.lastMessageTime!);
+          });
+
+          return groups;
+        });
   }
 
   // Get messages for a conversation
@@ -128,11 +153,21 @@ class MessagingService {
     return _firestore
         .collection('messages')
         .where('conversationId', isEqualTo: conversationId)
-        .orderBy('timestamp', descending: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => MessageModel.fromMap(doc.data()))
-            .toList());
+        .map((snapshot) {
+          print('Firestore snapshot received: ${snapshot.docs.length} documents');
+          final messages = snapshot.docs
+              .map((doc) {
+                print('Message doc: ${doc.data()}');
+                return MessageModel.fromMap(doc.data());
+              })
+              .toList();
+
+          // Sort in memory instead of Firestore query
+          messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+          return messages;
+        });
   }
 
   // Generate conversation ID for 1-on-1 chat

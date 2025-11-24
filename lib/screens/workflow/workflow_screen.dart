@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/app_provider.dart';
@@ -6,6 +7,7 @@ import '../../providers/auth_provider.dart' as app_auth;
 import '../../constants/app_constants.dart';
 import '../../services/workflow_service.dart';
 import '../../utils/date_utils.dart';
+import '../../widgets/shimmer_loading.dart';
 
 class WorkflowScreen extends StatefulWidget {
   const WorkflowScreen({super.key});
@@ -82,7 +84,9 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
       stream: _workflowService.getWorkflowsForUser(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          final size = MediaQuery.of(context).size;
+          final isWeb = kIsWeb || size.width > 800;
+          return ShimmerLoading.listItem(isWeb: isWeb, count: 5);
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -111,7 +115,9 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
       stream: _workflowService.getAssignedWorkflows(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          final size = MediaQuery.of(context).size;
+          final isWeb = kIsWeb || size.width > 800;
+          return ShimmerLoading.listItem(isWeb: isWeb, count: 5);
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -140,7 +146,9 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
       stream: _workflowService.getPendingWorkflows(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          final size = MediaQuery.of(context).size;
+          final isWeb = kIsWeb || size.width > 800;
+          return ShimmerLoading.listItem(isWeb: isWeb, count: 5);
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -169,7 +177,9 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
       future: _workflowService.getWorkflowStats(userId: userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          final size = MediaQuery.of(context).size;
+          final isWeb = kIsWeb || size.width > 800;
+          return ShimmerLoading.listItem(isWeb: isWeb, count: 5);
         }
 
         if (!snapshot.hasData) {

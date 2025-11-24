@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/app_provider.dart';
@@ -9,6 +10,7 @@ import '../../services/user_service.dart';
 import '../../models/meeting_model.dart';
 import '../../models/user_model.dart';
 import '../../utils/date_utils.dart';
+import '../../widgets/shimmer_loading.dart';
 import 'calendar_screen.dart';
 
 class MeetingsScreen extends StatefulWidget {
@@ -89,11 +91,14 @@ class _MeetingsScreenState extends State<MeetingsScreen> with SingleTickerProvid
   }
 
   Widget _buildUpcomingMeetings(String userId, bool isRTL) {
+    final size = MediaQuery.of(context).size;
+    final isWeb = kIsWeb || size.width > 800;
+
     return StreamBuilder<List<MeetingModel>>(
       stream: _meetingService.getUpcomingMeetingsStream(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return ShimmerLoading.listItem(isWeb: isWeb, count: 5);
         }
 
         if (snapshot.hasError) {
@@ -115,11 +120,14 @@ class _MeetingsScreenState extends State<MeetingsScreen> with SingleTickerProvid
   }
 
   Widget _buildTodayMeetings(String userId, bool isRTL) {
+    final size = MediaQuery.of(context).size;
+    final isWeb = kIsWeb || size.width > 800;
+
     return StreamBuilder<List<MeetingModel>>(
       stream: _meetingService.getTodaysMeetingsStream(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return ShimmerLoading.listItem(isWeb: isWeb, count: 5);
         }
 
         if (snapshot.hasError) {
@@ -141,11 +149,14 @@ class _MeetingsScreenState extends State<MeetingsScreen> with SingleTickerProvid
   }
 
   Widget _buildPastMeetings(String userId, bool isRTL) {
+    final size = MediaQuery.of(context).size;
+    final isWeb = kIsWeb || size.width > 800;
+
     return StreamBuilder<List<MeetingModel>>(
       stream: _meetingService.getPastMeetingsStream(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return ShimmerLoading.listItem(isWeb: isWeb, count: 5);
         }
 
         if (snapshot.hasError) {
