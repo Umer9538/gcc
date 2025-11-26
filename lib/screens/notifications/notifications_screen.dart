@@ -92,6 +92,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
           tabs: [
             Tab(text: isRTL ? 'الكل' : 'All'),
             Tab(text: isRTL ? 'الاجتماعات' : 'Meetings'),

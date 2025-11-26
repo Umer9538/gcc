@@ -13,7 +13,7 @@ import '../../widgets/shimmer_loading.dart';
 import '../../services/permissions_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
-import 'dart:html' as html show FileUploadInputElement, File, FileReader;
+import 'dart:html' as html show FileUploadInputElement, File, FileReader, Blob, Url, AnchorElement;
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -33,7 +33,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -69,8 +69,12 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
             bottom: TabBar(
               controller: _tabController,
               indicatorColor: Colors.white,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              isScrollable: true,
               tabs: [
                 Tab(text: isRTL ? 'المتاحة' : 'Available'),
+                Tab(text: isRTL ? 'النماذج' : 'Templates'),
                 Tab(text: isRTL ? 'الطلبات' : 'Requests'),
                 Tab(text: isRTL ? 'الإحصائيات' : 'Stats'),
               ],
@@ -80,6 +84,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
             controller: _tabController,
             children: [
               _buildAvailableDocumentsTab(userId, currentUser, isRTL),
+              _buildTemplatesTab(isRTL),
               _buildRequestsTab(userId, currentUser, isRTL),
               _buildStatsTab(userId, currentUser, isRTL),
             ],
@@ -386,6 +391,466 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
         );
       },
     );
+  }
+
+  Widget _buildTemplatesTab(bool isRTL) {
+    final templates = [
+      {
+        'id': 'vacation_leave_en',
+        'title': 'Vacation Leave Request',
+        'titleAr': 'طلب إجازة',
+        'description': 'Official vacation leave request form',
+        'descriptionAr': 'نموذج طلب إجازة رسمي',
+        'icon': Icons.beach_access,
+        'color': AppColors.gentleGreen,
+        'content': '''
+VACATION LEAVE REQUEST FORM
+
+Employee Name: _______________________
+Employee ID: _______________________
+Department: _______________________
+Position: _______________________
+
+Leave Type:
+☐ Annual Leave
+☐ Sick Leave
+☐ Emergency Leave
+☐ Unpaid Leave
+☐ Other: _______________________
+
+Leave Period:
+From: ___/___/______
+To: ___/___/______
+Total Days: _______
+
+Reason for Leave:
+_______________________________________________
+_______________________________________________
+_______________________________________________
+
+Contact Information During Leave:
+Phone: _______________________
+Email: _______________________
+
+Work Handover:
+Tasks delegated to: _______________________
+Handover notes: _______________________
+
+Employee Signature: _____________ Date: ___/___/______
+
+APPROVAL SECTION:
+☐ Approved  ☐ Rejected
+
+Manager Name: _______________________
+Manager Signature: _____________ Date: ___/___/______
+
+HR Approval: _______________________
+Date: ___/___/______
+''',
+        'contentAr': '''
+نموذج طلب إجازة
+
+اسم الموظف: _______________________
+الرقم الوظيفي: _______________________
+القسم: _______________________
+المسمى الوظيفي: _______________________
+
+نوع الإجازة:
+☐ إجازة سنوية
+☐ إجازة مرضية
+☐ إجازة طارئة
+☐ إجازة بدون راتب
+☐ أخرى: _______________________
+
+فترة الإجازة:
+من: ___/___/______
+إلى: ___/___/______
+إجمالي الأيام: _______
+
+سبب الإجازة:
+_______________________________________________
+_______________________________________________
+_______________________________________________
+
+معلومات الاتصال خلال الإجازة:
+الهاتف: _______________________
+البريد الإلكتروني: _______________________
+
+تسليم العمل:
+المهام المفوضة إلى: _______________________
+ملاحظات التسليم: _______________________
+
+توقيع الموظف: _____________ التاريخ: ___/___/______
+
+قسم الموافقة:
+☐ موافق  ☐ مرفوض
+
+اسم المدير: _______________________
+توقيع المدير: _____________ التاريخ: ___/___/______
+
+موافقة الموارد البشرية: _______________________
+التاريخ: ___/___/______
+''',
+      },
+      {
+        'id': 'promotion_request_en',
+        'title': 'Promotion Request',
+        'titleAr': 'طلب ترقية',
+        'description': 'Official promotion request form',
+        'descriptionAr': 'نموذج طلب ترقية رسمي',
+        'icon': Icons.trending_up,
+        'color': AppColors.gentlePurple,
+        'content': '''
+PROMOTION REQUEST FORM
+
+EMPLOYEE INFORMATION:
+Full Name: _______________________
+Employee ID: _______________________
+Current Department: _______________________
+Current Position: _______________________
+Date of Joining: ___/___/______
+Years of Service: _______
+
+REQUESTED PROMOTION:
+Desired Position: _______________________
+Desired Department: _______________________
+
+QUALIFICATIONS & ACHIEVEMENTS:
+
+Educational Background:
+_______________________________________________
+_______________________________________________
+
+Professional Certifications:
+_______________________________________________
+_______________________________________________
+
+Key Achievements in Current Role:
+1. _______________________________________________
+2. _______________________________________________
+3. _______________________________________________
+4. _______________________________________________
+5. _______________________________________________
+
+Projects Completed:
+_______________________________________________
+_______________________________________________
+
+Training Programs Attended:
+_______________________________________________
+_______________________________________________
+
+JUSTIFICATION FOR PROMOTION:
+_______________________________________________
+_______________________________________________
+_______________________________________________
+_______________________________________________
+
+CAREER GOALS:
+_______________________________________________
+_______________________________________________
+
+Employee Signature: _____________ Date: ___/___/______
+
+MANAGER RECOMMENDATION:
+☐ Strongly Recommend  ☐ Recommend  ☐ Do Not Recommend
+
+Comments:
+_______________________________________________
+_______________________________________________
+
+Manager Name: _______________________
+Manager Signature: _____________ Date: ___/___/______
+
+HR REVIEW:
+☐ Approved  ☐ Pending Review  ☐ Rejected
+
+HR Comments:
+_______________________________________________
+
+HR Representative: _______________________
+Date: ___/___/______
+
+FINAL APPROVAL:
+☐ Approved  ☐ Rejected
+
+Effective Date: ___/___/______
+New Position: _______________________
+New Salary Grade: _______________________
+
+Authorized Signature: _______________________
+Date: ___/___/______
+''',
+        'contentAr': '''
+نموذج طلب ترقية
+
+معلومات الموظف:
+الاسم الكامل: _______________________
+الرقم الوظيفي: _______________________
+القسم الحالي: _______________________
+المسمى الوظيفي الحالي: _______________________
+تاريخ الالتحاق: ___/___/______
+سنوات الخدمة: _______
+
+الترقية المطلوبة:
+المسمى الوظيفي المطلوب: _______________________
+القسم المطلوب: _______________________
+
+المؤهلات والإنجازات:
+
+الخلفية التعليمية:
+_______________________________________________
+_______________________________________________
+
+الشهادات المهنية:
+_______________________________________________
+_______________________________________________
+
+الإنجازات الرئيسية في الدور الحالي:
+1. _______________________________________________
+2. _______________________________________________
+3. _______________________________________________
+4. _______________________________________________
+5. _______________________________________________
+
+المشاريع المنجزة:
+_______________________________________________
+_______________________________________________
+
+البرامج التدريبية:
+_______________________________________________
+_______________________________________________
+
+مبررات طلب الترقية:
+_______________________________________________
+_______________________________________________
+_______________________________________________
+_______________________________________________
+
+الأهداف المهنية:
+_______________________________________________
+_______________________________________________
+
+توقيع الموظف: _____________ التاريخ: ___/___/______
+
+توصية المدير:
+☐ أوصي بشدة  ☐ أوصي  ☐ لا أوصي
+
+التعليقات:
+_______________________________________________
+_______________________________________________
+
+اسم المدير: _______________________
+توقيع المدير: _____________ التاريخ: ___/___/______
+
+مراجعة الموارد البشرية:
+☐ موافق  ☐ قيد المراجعة  ☐ مرفوض
+
+تعليقات الموارد البشرية:
+_______________________________________________
+
+ممثل الموارد البشرية: _______________________
+التاريخ: ___/___/______
+
+الموافقة النهائية:
+☐ موافق  ☐ مرفوض
+
+تاريخ السريان: ___/___/______
+المسمى الوظيفي الجديد: _______________________
+الدرجة الوظيفية الجديدة: _______________________
+
+التوقيع المعتمد: _______________________
+التاريخ: ___/___/______
+''',
+      },
+    ];
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(AppConstants.defaultPadding),
+      itemCount: templates.length,
+      itemBuilder: (context, index) {
+        final template = templates[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: AppConstants.defaultPadding),
+          child: Padding(
+            padding: const EdgeInsets.all(AppConstants.defaultPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: (template['color'] as Color).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        template['icon'] as IconData,
+                        color: template['color'] as Color,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: AppConstants.defaultPadding),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isRTL ? template['titleAr'] as String : template['title'] as String,
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            isRTL ? template['descriptionAr'] as String : template['description'] as String,
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppConstants.defaultPadding),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showTemplatePreview(
+                          isRTL ? template['titleAr'] as String : template['title'] as String,
+                          template['content'] as String,
+                          isRTL,
+                          false,
+                        ),
+                        icon: const Icon(Icons.visibility, size: 18),
+                        label: Text(isRTL ? 'عرض (EN)' : 'View (EN)'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: template['color'] as Color,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showTemplatePreview(
+                          template['titleAr'] as String,
+                          template['contentAr'] as String,
+                          isRTL,
+                          true,
+                        ),
+                        icon: const Icon(Icons.visibility, size: 18),
+                        label: Text(isRTL ? 'عرض (AR)' : 'View (AR)'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: template['color'] as Color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _downloadTemplate(
+                          template['title'] as String,
+                          template['content'] as String,
+                          isRTL,
+                        ),
+                        icon: const Icon(Icons.download, size: 18),
+                        label: Text(isRTL ? 'تحميل (EN)' : 'Download (EN)'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: template['color'] as Color,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _downloadTemplate(
+                          template['titleAr'] as String,
+                          template['contentAr'] as String,
+                          isRTL,
+                        ),
+                        icon: const Icon(Icons.download, size: 18),
+                        label: Text(isRTL ? 'تحميل (AR)' : 'Download (AR)'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: template['color'] as Color,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showTemplatePreview(String title, String content, bool isRTL, bool isArabic) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          title,
+          textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: SingleChildScrollView(
+            child: Text(
+              content,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isRTL ? 'إغلاق' : 'Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _downloadTemplate(String title, String content, bool isRTL) {
+    if (kIsWeb) {
+      // For web, create a downloadable text file
+      final bytes = content.codeUnits;
+      final blob = html.Blob([bytes], 'text/plain', 'native');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', '${title.replaceAll(' ', '_')}.txt')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isRTL ? 'جاري تحميل النموذج...' : 'Downloading template...'),
+          backgroundColor: AppColors.successColor,
+        ),
+      );
+    } else {
+      // For mobile, show a message (would need path_provider for actual download)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isRTL ? 'عرض النموذج على الشاشة' : 'Template preview shown'),
+          backgroundColor: AppColors.infoColor,
+        ),
+      );
+      _showTemplatePreview(title, content, isRTL, title.contains('طلب'));
+    }
   }
 
   Widget _buildDocumentCard(DocumentModel document, bool isRTL, currentUser) {

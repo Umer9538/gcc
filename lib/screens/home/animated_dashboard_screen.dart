@@ -22,6 +22,7 @@ import '../workflow/workflow_screen.dart';
 import '../messaging/messaging_screen.dart';
 import '../chatbot/chatbot_screen.dart';
 import '../admin/user_management_screen.dart';
+import '../notifications/notifications_screen.dart';
 
 class AnimatedDashboardScreen extends StatefulWidget {
   const AnimatedDashboardScreen({super.key});
@@ -63,7 +64,12 @@ class _AnimatedDashboardScreenState extends State<AnimatedDashboardScreen> {
                 child: IconButton(
                   icon: const Icon(Icons.notifications_outlined),
                   onPressed: () {
-                    // TODO: Navigate to notifications
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const NotificationsScreen(),
+                      ),
+                    );
                   },
                 ),
               ),
@@ -72,7 +78,7 @@ class _AnimatedDashboardScreenState extends State<AnimatedDashboardScreen> {
                 child: IconButton(
                   icon: const Icon(Icons.search_outlined),
                   onPressed: () {
-                    // TODO: Open search
+                    _showSearchDialog(context, isRTL);
                   },
                 ),
               ),
@@ -726,5 +732,74 @@ class _AnimatedDashboardScreenState extends State<AnimatedDashboardScreen> {
       case AnnouncementPriority.low:
         return Colors.grey;
     }
+  }
+
+  void _showSearchDialog(BuildContext context, bool isRTL) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isRTL ? 'البحث' : 'Search'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              isRTL ? 'اختر ما تريد البحث عنه:' : 'What would you like to search?',
+              style: AppTextStyles.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.people, color: AppColors.primaryColor),
+              title: Text(isRTL ? 'دليل الموظفين' : 'Employee Directory'),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DirectoryScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.event, color: AppColors.gentleGreen),
+              title: Text(isRTL ? 'الاجتماعات' : 'Meetings'),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MeetingsScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.description, color: AppColors.gentleOrange),
+              title: Text(isRTL ? 'الوثائق' : 'Documents'),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DocumentsScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.announcement, color: AppColors.gentlePurple),
+              title: Text(isRTL ? 'الإعلانات' : 'Announcements'),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AnnouncementsScreen()),
+                );
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+          ),
+        ],
+      ),
+    );
   }
 }

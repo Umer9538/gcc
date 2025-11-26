@@ -349,8 +349,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildDetailRow(isRTL ? 'الاسم' : 'Name', user.fullName, isRTL),
-              _buildDetailRow(isRTL ? 'البريد الإلكتروني' : 'Email', user.email, isRTL),
-              _buildDetailRow(isRTL ? 'الهاتف' : 'Phone', user.phoneNumber ?? 'N/A', isRTL),
+              _buildDetailRow(isRTL ? 'البريد الإلكتروني' : 'Email', user.email, isRTL, forceLtr: true),
+              _buildDetailRow(isRTL ? 'الهاتف' : 'Phone', user.phoneNumber ?? 'N/A', isRTL, forceLtr: true),
               _buildDetailRow(isRTL ? 'القسم' : 'Department', user.department, isRTL),
               _buildDetailRow(isRTL ? 'المنصب' : 'Position', user.position, isRTL),
               _buildDetailRow(
@@ -371,7 +371,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, bool isRTL) {
+  Widget _buildDetailRow(String label, String value, bool isRTL, {bool forceLtr = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -385,10 +385,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: AppTextStyles.bodyMedium,
-          ),
+          forceLtr
+              ? Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      value,
+                      style: AppTextStyles.bodyMedium,
+                    ),
+                  ),
+                )
+              : Text(
+                  value,
+                  style: AppTextStyles.bodyMedium,
+                ),
         ],
       ),
     );

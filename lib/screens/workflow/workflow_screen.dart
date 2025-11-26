@@ -51,6 +51,8 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
             bottom: TabBar(
               controller: _tabController,
               indicatorColor: Colors.white,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
               isScrollable: true,
               tabs: [
                 Tab(text: isRTL ? 'طلباتي' : 'My Workflows'),
@@ -299,18 +301,36 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(workflow.status).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _getStatusText(workflow.status, isRTL),
-                      style: TextStyle(
-                        color: _getStatusColor(workflow.status),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                  InkWell(
+                    onTap: () => _showStatusChangeBottomSheet(workflow, isRTL),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(workflow.status).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _getStatusColor(workflow.status).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _getStatusText(workflow.status, isRTL),
+                            style: TextStyle(
+                              color: _getStatusColor(workflow.status),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.edit,
+                            size: 12,
+                            color: _getStatusColor(workflow.status),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -570,6 +590,154 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
     }
   }
 
+  void _showStatusChangeBottomSheet(WorkflowModel workflow, bool isRTL) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppConstants.defaultPadding),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    isRTL ? 'تغيير الحالة' : 'Change Status',
+                    style: AppTextStyles.heading3,
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                workflow.title,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondaryColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildStatusOption(
+                workflow,
+                WorkflowStatus.pending,
+                isRTL ? 'معلق' : 'Pending',
+                isRTL ? 'في انتظار المراجعة' : 'Waiting for review',
+                Icons.schedule,
+                AppColors.warningColor,
+                isRTL,
+              ),
+              _buildStatusOption(
+                workflow,
+                WorkflowStatus.inProgress,
+                isRTL ? 'قيد التنفيذ' : 'In Progress',
+                isRTL ? 'العمل جاري على هذا الطلب' : 'Work is being done on this request',
+                Icons.work_history,
+                AppColors.infoColor,
+                isRTL,
+              ),
+              _buildStatusOption(
+                workflow,
+                WorkflowStatus.approved,
+                isRTL ? 'مقبول' : 'Approved',
+                isRTL ? 'تمت الموافقة على الطلب' : 'Request has been approved',
+                Icons.check_circle,
+                AppColors.successColor,
+                isRTL,
+              ),
+              _buildStatusOption(
+                workflow,
+                WorkflowStatus.rejected,
+                isRTL ? 'مرفوض' : 'Rejected',
+                isRTL ? 'تم رفض الطلب' : 'Request has been rejected',
+                Icons.cancel,
+                AppColors.errorColor,
+                isRTL,
+              ),
+              _buildStatusOption(
+                workflow,
+                WorkflowStatus.completed,
+                isRTL ? 'مكتمل' : 'Completed',
+                isRTL ? 'تم إكمال الطلب بنجاح' : 'Request has been completed successfully',
+                Icons.done_all,
+                AppColors.gentleGreen,
+                isRTL,
+              ),
+              _buildStatusOption(
+                workflow,
+                WorkflowStatus.cancelled,
+                isRTL ? 'ملغي' : 'Cancelled',
+                isRTL ? 'تم إلغاء الطلب' : 'Request has been cancelled',
+                Icons.block,
+                AppColors.textSecondaryColor,
+                isRTL,
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusOption(
+    WorkflowModel workflow,
+    WorkflowStatus status,
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    bool isRTL,
+  ) {
+    final isCurrentStatus = workflow.status == status;
+    return ListTile(
+      onTap: isCurrentStatus
+          ? null
+          : () async {
+              Navigator.pop(context);
+              await _updateWorkflowStatus(workflow.id, status, isRTL);
+            },
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: isCurrentStatus ? color : color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          color: isCurrentStatus ? Colors.white : color,
+          size: 20,
+        ),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: isCurrentStatus ? FontWeight.bold : FontWeight.normal,
+          color: isCurrentStatus ? color : AppColors.textPrimaryColor,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: AppTextStyles.bodySmall,
+      ),
+      trailing: isCurrentStatus
+          ? Icon(Icons.check, color: color)
+          : Icon(Icons.chevron_right, color: AppColors.textSecondaryColor),
+      selected: isCurrentStatus,
+      selectedTileColor: color.withValues(alpha: 0.05),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+    );
+  }
+
   void _showWorkflowDetails(WorkflowModel workflow, bool isRTL) {
     showDialog(
       context: context,
@@ -577,85 +745,169 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
         title: Text(workflow.title),
         content: SizedBox(
           width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${isRTL ? 'النوع' : 'Type'}: ${_getWorkflowTypeText(workflow.type, isRTL)}',
-                style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${isRTL ? 'الحالة' : 'Status'}: ${_getStatusText(workflow.status, isRTL)}',
-                style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${isRTL ? 'الوصف' : 'Description'}:',
-                style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
-              ),
-              Text(workflow.description),
-              const SizedBox(height: 16),
-              if (workflow.steps.isNotEmpty) ...[
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  isRTL ? 'خطوات سير العمل:' : 'Workflow Steps:',
+                  '${isRTL ? 'النوع' : 'Type'}: ${_getWorkflowTypeText(workflow.type, isRTL)}',
                   style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                ...workflow.steps.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final step = entry.value;
-                  final isCurrentStep = index == workflow.currentStepIndex;
-                  final isCompleted = step.status == WorkflowStatus.completed;
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: isCompleted
-                                ? AppColors.successColor
-                                : isCurrentStep
-                                    ? AppColors.infoColor
-                                    : AppColors.borderColor,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            isCompleted ? Icons.check : Icons.circle,
-                            size: 12,
-                            color: Colors.white,
-                          ),
+                Row(
+                  children: [
+                    Text(
+                      '${isRTL ? 'الحالة' : 'Status'}: ',
+                      style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(workflow.status).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _getStatusText(workflow.status, isRTL),
+                        style: TextStyle(
+                          color: _getStatusColor(workflow.status),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            step.title,
-                            style: TextStyle(
-                              fontWeight: isCurrentStep ? FontWeight.bold : FontWeight.normal,
-                              color: isCurrentStep ? AppColors.primaryColor : AppColors.textPrimaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Status Change Buttons
+                Text(
+                  isRTL ? 'تغيير الحالة:' : 'Change Status:',
+                  style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildStatusButton(
+                      workflow,
+                      WorkflowStatus.pending,
+                      isRTL ? 'معلق' : 'Pending',
+                      Icons.schedule,
+                      AppColors.warningColor,
+                      isRTL,
+                    ),
+                    _buildStatusButton(
+                      workflow,
+                      WorkflowStatus.inProgress,
+                      isRTL ? 'قيد التنفيذ' : 'In Progress',
+                      Icons.work_history,
+                      AppColors.infoColor,
+                      isRTL,
+                    ),
+                    _buildStatusButton(
+                      workflow,
+                      WorkflowStatus.approved,
+                      isRTL ? 'مقبول' : 'Approved',
+                      Icons.check_circle,
+                      AppColors.successColor,
+                      isRTL,
+                    ),
+                    _buildStatusButton(
+                      workflow,
+                      WorkflowStatus.rejected,
+                      isRTL ? 'مرفوض' : 'Rejected',
+                      Icons.cancel,
+                      AppColors.errorColor,
+                      isRTL,
+                    ),
+                    _buildStatusButton(
+                      workflow,
+                      WorkflowStatus.completed,
+                      isRTL ? 'مكتمل' : 'Completed',
+                      Icons.done_all,
+                      AppColors.gentleGreen,
+                      isRTL,
+                    ),
+                    _buildStatusButton(
+                      workflow,
+                      WorkflowStatus.cancelled,
+                      isRTL ? 'ملغي' : 'Cancelled',
+                      Icons.block,
+                      AppColors.textSecondaryColor,
+                      isRTL,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  '${isRTL ? 'الوصف' : 'Description'}:',
+                  style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                ),
+                Text(workflow.description),
+                const SizedBox(height: 16),
+                if (workflow.steps.isNotEmpty) ...[
+                  Text(
+                    isRTL ? 'خطوات سير العمل:' : 'Workflow Steps:',
+                    style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...workflow.steps.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final step = entry.value;
+                    final isCurrentStep = index == workflow.currentStepIndex;
+                    final isCompleted = step.status == WorkflowStatus.completed;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: isCompleted
+                                  ? AppColors.successColor
+                                  : isCurrentStep
+                                      ? AppColors.infoColor
+                                      : AppColors.borderColor,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isCompleted ? Icons.check : Icons.circle,
+                              size: 12,
+                              color: Colors.white,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ],
-              const SizedBox(height: 16),
-              Text(
-                '${isRTL ? 'تاريخ الإنشاء' : 'Created'}: ${AppDateUtils.formatDate(workflow.createdAt, locale: isRTL ? 'ar' : 'en')}',
-                style: AppTextStyles.bodySmall,
-              ),
-              if (workflow.completedAt != null)
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              step.title,
+                              style: TextStyle(
+                                fontWeight: isCurrentStep ? FontWeight.bold : FontWeight.normal,
+                                color: isCurrentStep ? AppColors.primaryColor : AppColors.textPrimaryColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+                const SizedBox(height: 16),
                 Text(
-                  '${isRTL ? 'تاريخ الإكمال' : 'Completed'}: ${AppDateUtils.formatDate(workflow.completedAt!, locale: isRTL ? 'ar' : 'en')}',
+                  '${isRTL ? 'تاريخ الإنشاء' : 'Created'}: ${AppDateUtils.formatDate(workflow.createdAt, locale: isRTL ? 'ar' : 'en')}',
                   style: AppTextStyles.bodySmall,
                 ),
-            ],
+                if (workflow.completedAt != null)
+                  Text(
+                    '${isRTL ? 'تاريخ الإكمال' : 'Completed'}: ${AppDateUtils.formatDate(workflow.completedAt!, locale: isRTL ? 'ar' : 'en')}',
+                    style: AppTextStyles.bodySmall,
+                  ),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -664,6 +916,56 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
             child: Text(isRTL ? 'إغلاق' : 'Close'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStatusButton(
+    WorkflowModel workflow,
+    WorkflowStatus status,
+    String label,
+    IconData icon,
+    Color color,
+    bool isRTL,
+  ) {
+    final isCurrentStatus = workflow.status == status;
+    return InkWell(
+      onTap: isCurrentStatus
+          ? null
+          : () async {
+              Navigator.pop(context);
+              await _updateWorkflowStatus(workflow.id, status, isRTL);
+            },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isCurrentStatus ? color : color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: color,
+            width: isCurrentStatus ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isCurrentStatus ? Colors.white : color,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isCurrentStatus ? Colors.white : color,
+                fontWeight: isCurrentStatus ? FontWeight.bold : FontWeight.normal,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

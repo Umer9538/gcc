@@ -84,6 +84,8 @@ class _MessagingScreenState extends State<MessagingScreen> with SingleTickerProv
             bottom: TabBar(
               controller: _tabController,
               indicatorColor: Colors.white,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
               tabs: [
                 Tab(text: isRTL ? 'المحادثات' : 'Chats'),
                 Tab(text: isRTL ? 'المجموعات' : 'Groups'),

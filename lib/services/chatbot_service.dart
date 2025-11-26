@@ -10,8 +10,8 @@ class ChatbotService {
   final Uuid _uuid = const Uuid();
 
   // Gemini API key for AI chatbot functionality
-  static const String _geminiApiKey = 'AIzaSyAAOG47IKZuEVF8IcV5JDGRB8Maek-cO6I';
-  static const String _geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+  static const String _geminiApiKey = 'AIzaSyAlPniG3cE7byDM_QB5YP6NhRnpaKuSM1s';
+  static const String _geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
   // Context about GCC Connect app for better responses
   final String _systemContext = '''
@@ -114,32 +114,20 @@ Be professional, concise, and helpful. Support both English and Arabic languages
   // Generate AI response using Gemini API
   Future<String> generateAIResponse(String userMessage, List<ChatMessage> conversationHistory, UserModel? user) async {
     try {
-      // Build conversation context
+      // Build conversation context with proper roles for Gemini 1.5
       final List<Map<String, dynamic>> contents = [];
 
-      // Add system context
-      contents.add({
-        'parts': [
-          {'text': _systemContext}
-        ]
-      });
-
-      // Add user context if available
+      // Build system instruction with user context
+      String systemInstruction = _systemContext;
       if (user != null) {
-        contents.add({
-          'parts': [
-            {
-              'text': 'User Information:\n'
-                  'Name: ${user.fullName}\n'
-                  'Position: ${user.position}\n'
-                  'Department: ${user.department}\n'
-                  'Roles: ${user.roles.join(", ")}'
-            }
-          ]
-        });
+        systemInstruction += '\n\nCurrent User Information:\n'
+            'Name: ${user.fullName}\n'
+            'Position: ${user.position}\n'
+            'Department: ${user.department}\n'
+            'Roles: ${user.roles.join(", ")}';
       }
 
-      // Add conversation history (last 10 messages)
+      // Add conversation history (last 10 messages) with proper roles
       final recentHistory = conversationHistory.length > 10
           ? conversationHistory.sublist(conversationHistory.length - 10)
           : conversationHistory;
@@ -147,12 +135,9 @@ Be professional, concise, and helpful. Support both English and Arabic languages
       for (var message in recentHistory) {
         if (message.sender != MessageSender.system) {
           contents.add({
+            'role': message.sender == MessageSender.user ? 'user' : 'model',
             'parts': [
-              {
-                'text': message.sender == MessageSender.user
-                    ? 'User: ${message.content}'
-                    : 'Assistant: ${message.content}'
-              }
+              {'text': message.content}
             ]
           });
         }
@@ -160,8 +145,9 @@ Be professional, concise, and helpful. Support both English and Arabic languages
 
       // Add current user message
       contents.add({
+        'role': 'user',
         'parts': [
-          {'text': 'User: $userMessage'}
+          {'text': userMessage}
         ]
       });
 
@@ -173,6 +159,11 @@ Be professional, concise, and helpful. Support both English and Arabic languages
         },
         body: json.encode({
           'contents': contents,
+          'systemInstruction': {
+            'parts': [
+              {'text': systemInstruction}
+            ]
+          },
           'generationConfig': {
             'temperature': 0.7,
             'topK': 40,

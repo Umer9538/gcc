@@ -90,7 +90,8 @@ curl -s -X PATCH "$BASE_URL/employee" \
     "priority": {"integerValue": "100"},
     "isActive": {"booleanValue": true},
     "permissions": {"arrayValue": {"values": [
-      {"stringValue": "Permission.viewAnnouncements"}
+      {"stringValue": "Permission.viewAnnouncements"},
+      {"stringValue": "Permission.uploadDocuments"}
     ]}}
   }
 }' > /dev/null && echo "✅ Employee permissions created"
@@ -101,12 +102,12 @@ echo "✅ ALL ROLE PERMISSIONS INITIALIZED"
 echo "═══════════════════════════════════════════════════════"
 echo ""
 echo "📝 Roles created:"
-echo "   • super_admin (Priority: 1000) - CAN CREATE ANNOUNCEMENTS"
-echo "   • admin       (Priority: 900)  - CAN CREATE ANNOUNCEMENTS"
-echo "   • manager     (Priority: 800)  - CAN CREATE ANNOUNCEMENTS"
-echo "   • hr          (Priority: 700)  - CAN CREATE ANNOUNCEMENTS"
-echo "   • employee    (Priority: 100)  - Can only view announcements"
+echo "   • super_admin (Priority: 1000) - CAN CREATE ANNOUNCEMENTS & UPLOAD DOCUMENTS"
+echo "   • admin       (Priority: 900)  - CAN CREATE ANNOUNCEMENTS & UPLOAD DOCUMENTS"
+echo "   • manager     (Priority: 800)  - CAN CREATE ANNOUNCEMENTS & UPLOAD DOCUMENTS"
+echo "   • hr          (Priority: 700)  - CAN CREATE ANNOUNCEMENTS & UPLOAD DOCUMENTS"
+echo "   • employee    (Priority: 100)  - CAN VIEW ANNOUNCEMENTS & UPLOAD DOCUMENTS"
 echo ""
 echo "🔄 REFRESH YOUR BROWSER to see the changes!"
-echo "   The '+' button should now appear in Announcements screen"
+echo "   The '+' button should now appear in Announcements & Documents screens"
 echo "═══════════════════════════════════════════════════════"

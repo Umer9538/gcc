@@ -8,7 +8,6 @@ import '../../constants/app_constants.dart';
 import '../../services/user_service.dart';
 import '../../utils/date_utils.dart';
 import 'edit_profile_screen.dart';
-import '../debug/role_manager_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -123,6 +122,7 @@ class ProfileScreen extends StatelessWidget {
                             icon: Icons.phone_outlined,
                             title: isRTL ? 'رقم الهاتف' : 'Phone Number',
                             value: user?.phoneNumber ?? '',
+                            forceLtr: true,
                           ),
                           _buildInfoTile(
                             icon: Icons.calendar_today_outlined,
@@ -206,24 +206,6 @@ class ProfileScreen extends StatelessWidget {
                                 // TODO: Toggle notifications
                               },
                             ),
-                          ),
-                          // DEBUG: Role Manager
-                          ListTile(
-                            leading: Icon(Icons.bug_report, color: Colors.orange),
-                            title: Text(
-                              'Role Manager (DEBUG)',
-                              style: TextStyle(color: Colors.orange),
-                            ),
-                            subtitle: Text('Change user roles for testing'),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const RoleManagerScreen(),
-                                ),
-                              );
-                            },
                           ),
                         ],
                       ),
@@ -315,6 +297,7 @@ class ProfileScreen extends StatelessWidget {
     required IconData icon,
     required String title,
     required String value,
+    bool forceLtr = false,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppConstants.smallPadding),
@@ -337,10 +320,21 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  value.isNotEmpty ? value : '-',
-                  style: AppTextStyles.bodyMedium,
-                ),
+                forceLtr
+                    ? Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            value.isNotEmpty ? value : '-',
+                            style: AppTextStyles.bodyMedium,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        value.isNotEmpty ? value : '-',
+                        style: AppTextStyles.bodyMedium,
+                      ),
               ],
             ),
           ),
@@ -446,7 +440,7 @@ class ProfileScreen extends StatelessWidget {
   void _showSignOutDialog(BuildContext context, app_auth.AuthProvider authProvider, bool isRTL) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(isRTL ? 'تسجيل الخروج' : 'Sign Out'),
         content: Text(
           isRTL
@@ -455,14 +449,16 @@ class ProfileScreen extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(isRTL ? 'إلغاء' : 'Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              authProvider.signOut();
-              context.go('/login');
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await authProvider.signOut();
+              if (context.mounted) {
+                context.go('/login');
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.errorColor,

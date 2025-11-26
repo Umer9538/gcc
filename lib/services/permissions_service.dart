@@ -376,6 +376,7 @@ class PermissionsService {
         priority: 100,
         permissions: [
           Permission.viewDocuments,
+          Permission.uploadDocuments,
           Permission.viewMeetings,
           Permission.createMeetings,
           Permission.viewAnnouncements,

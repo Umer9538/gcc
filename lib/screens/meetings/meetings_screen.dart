@@ -62,6 +62,8 @@ class _MeetingsScreenState extends State<MeetingsScreen> with SingleTickerProvid
             bottom: TabBar(
               controller: _tabController,
               indicatorColor: Colors.white,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
               isScrollable: true,
               tabs: [
                 Tab(text: isRTL ? 'القادمة' : 'Upcoming'),

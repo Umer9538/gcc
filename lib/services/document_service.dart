@@ -8,7 +8,7 @@ import '../models/notification_model.dart';
 import 'notification_service.dart';
 
 // Conditional import for File (only on mobile)
-import 'dart:io' if (dart.library.html) 'dart:html' as io;
+import 'dart:io' as io show File;
 
 class DocumentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -83,26 +83,47 @@ class DocumentService {
         print('   Bytes length: ${fileBytes.length}');
 
         // For web, use bytes
-        final uploadTask = await ref.putData(
+        final uploadTask = ref.putData(
           fileBytes,
           SettableMetadata(
             contentType: _getContentType(fileType),
           ),
         );
 
-        print('   Upload complete, getting download URL...');
-        downloadUrl = await uploadTask.ref.getDownloadURL();
+        // Listen to upload progress
+        uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+          final progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          print('   Upload progress: ${progress.toStringAsFixed(1)}%');
+          print('   State: ${snapshot.state}');
+        }, onError: (e) {
+          print('   Upload error in stream: $e');
+        });
+
+        // Wait for upload to complete with timeout
+        print('   Waiting for upload to complete...');
+        final snapshot = await uploadTask.timeout(
+          const Duration(minutes: 2),
+          onTimeout: () {
+            print('   Upload timed out!');
+            throw Exception('Upload timed out after 2 minutes');
+          },
+        );
+        print('   Upload state: ${snapshot.state}');
+        print('   Bytes transferred: ${snapshot.bytesTransferred}');
+        print('   Getting download URL...');
+        downloadUrl = await snapshot.ref.getDownloadURL();
         print('   Download URL: $downloadUrl');
       } else if (!kIsWeb && filePath != null) {
         // For mobile, use file path
         final file = io.File(filePath);
-        final uploadTask = await ref.putFile(
+        final uploadTask = ref.putFile(
           file,
           SettableMetadata(
             contentType: _getContentType(fileType),
           ),
         );
-        downloadUrl = await uploadTask.ref.getDownloadURL();
+        final snapshot = await uploadTask;
+        downloadUrl = await snapshot.ref.getDownloadURL();
       } else {
         throw Exception('No file data provided for upload');
       }

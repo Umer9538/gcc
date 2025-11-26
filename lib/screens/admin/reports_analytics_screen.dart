@@ -68,6 +68,9 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> with Si
         backgroundColor: const Color(0xFF4CAF50),
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
           tabs: [
             Tab(
               icon: const Icon(Icons.dashboard),

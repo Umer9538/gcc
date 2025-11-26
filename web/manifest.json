@@ -1,11 +1,11 @@
 {
-    "name": "gcc",
-    "short_name": "gcc",
+    "name": "GCC Connect",
+    "short_name": "GCC Connect",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Meeting scgedule app",
+    "background_color": "#1A5276",
+    "theme_color": "#1A5276",
+    "description": "GCC Connect - Internal Communication & Management Platform",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

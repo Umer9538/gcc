@@ -241,17 +241,30 @@ class _AnimatedLoginScreenState extends State<AnimatedLoginScreen> with SingleTi
               // Logo
               FadeIn(
                 delay: const Duration(milliseconds: 400),
-                child: Container(
-                  height: 80,
-                  width: 80,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryColor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  padding: const EdgeInsets.all(15),
-                  child: Image.asset(
-                    'assets/logo.png',
-                    fit: BoxFit.contain,
+                child: Center(
+                  child: Container(
+                    height: 120,
+                    width: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Image.asset(
+                          'assets/logo_circle.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

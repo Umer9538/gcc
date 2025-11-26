@@ -3,10 +3,12 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/auth_provider.dart' as app_auth;
 import '../../constants/app_constants.dart';
 import '../../services/user_service.dart';
 import '../../models/user_model.dart';
 import '../../widgets/shimmer_loading.dart';
+import '../messaging/chat_screen.dart';
 
 class DirectoryScreen extends StatefulWidget {
   const DirectoryScreen({super.key});
@@ -41,9 +43,10 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppProvider>(
-      builder: (context, appProvider, child) {
+    return Consumer2<AppProvider, app_auth.AuthProvider>(
+      builder: (context, appProvider, authProvider, child) {
         final isRTL = appProvider.isRTL;
+        final currentUser = authProvider.currentUser;
 
         return Scaffold(
           backgroundColor: AppColors.backgroundColor,
@@ -253,13 +256,15 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                     color: AppColors.gentleGreen,
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.email, size: 20),
-                                    onPressed: () => _sendEmail(user.email),
+                                    icon: const Icon(Icons.message, size: 20),
+                                    onPressed: currentUser != null && currentUser.id != user.id
+                                        ? () => _openChat(context, user, currentUser, isRTL)
+                                        : null,
                                     color: AppColors.primaryColor,
                                   ),
                                 ],
                               ),
-                              onTap: () => _showUserDetails(context, user, isRTL),
+                              onTap: () => _showUserDetails(context, user, currentUser, isRTL),
                               isThreeLine: true,
                             ),
                           );
@@ -353,10 +358,24 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     }
   }
 
-  void _showUserDetails(BuildContext context, UserModel user, bool isRTL) {
+  void _openChat(BuildContext context, UserModel otherUser, UserModel currentUser, bool isRTL) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(
+          otherUser: otherUser,
+          currentUser: currentUser,
+        ),
+      ),
+    );
+  }
+
+  void _showUserDetails(BuildContext context, UserModel user, UserModel? currentUser, bool isRTL) {
+    final canMessage = currentUser != null && currentUser.id != user.id;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
             CircleAvatar(
@@ -399,11 +418,13 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                 Icons.email_outlined,
                 isRTL ? 'البريد الإلكتروني' : 'Email',
                 user.email,
+                forceLtr: true,
               ),
               _buildDetailRow(
                 Icons.phone_outlined,
                 isRTL ? 'رقم الهاتف' : 'Phone',
                 user.phoneNumber,
+                forceLtr: true,
               ),
               if (user.roles.isNotEmpty)
                 _buildDetailRow(
@@ -416,23 +437,24 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(isRTL ? 'إغلاق' : 'Close'),
           ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(context);
-              _sendEmail(user.email);
-            },
-            icon: const Icon(Icons.email),
-            label: Text(isRTL ? 'إرسال إيميل' : 'Send Email'),
-          ),
+          if (canMessage)
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _openChat(context, user, currentUser, isRTL);
+              },
+              icon: const Icon(Icons.message),
+              label: Text(isRTL ? 'إرسال رسالة' : 'Send Message'),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value) {
+  Widget _buildDetailRow(IconData icon, String label, String value, {bool forceLtr = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -452,10 +474,21 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: AppTextStyles.bodyMedium,
-                ),
+                forceLtr
+                    ? Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            value,
+                            style: AppTextStyles.bodyMedium,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        value,
+                        style: AppTextStyles.bodyMedium,
+                      ),
               ],
             ),
           ),
