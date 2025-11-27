@@ -350,7 +350,11 @@ class WorkflowService {
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => WorkflowModel.fromMap(doc.data()))
-            .toList());
+            .toList())
+        .handleError((error) {
+          print('Error getting workflows for user: $error');
+          return <WorkflowModel>[];
+        });
   }
 
   // Get workflows assigned to user
@@ -362,7 +366,11 @@ class WorkflowService {
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => WorkflowModel.fromMap(doc.data()))
-            .toList());
+            .toList())
+        .handleError((error) {
+          print('Error getting assigned workflows: $error');
+          return <WorkflowModel>[];
+        });
   }
 
   // Get pending workflows
@@ -374,7 +382,11 @@ class WorkflowService {
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => WorkflowModel.fromMap(doc.data()))
-            .toList());
+            .toList())
+        .handleError((error) {
+          print('Error getting pending workflows: $error');
+          return <WorkflowModel>[];
+        });
   }
 
   // Get workflow by ID
@@ -384,7 +396,7 @@ class WorkflowService {
     return WorkflowModel.fromMap(doc.data()!);
   }
 
-  // Get workflow statistics
+  // Get workflow statistics (one-time)
   Future<Map<String, int>> getWorkflowStats({String? userId}) async {
     Query query = _firestore.collection('workflows');
 
@@ -405,6 +417,51 @@ class WorkflowService {
       'approved': workflows.where((w) => w.status == WorkflowStatus.approved).length,
       'rejected': workflows.where((w) => w.status == WorkflowStatus.rejected).length,
     };
+  }
+
+  // Get workflow statistics as stream (real-time updates)
+  Stream<Map<String, int>> getWorkflowStatsStream({String? userId}) {
+    // Note: We get all workflows and filter client-side to avoid complex queries
+    return _firestore.collection('workflows').snapshots().map((snapshot) {
+      try {
+        var workflows = snapshot.docs
+            .map((doc) {
+              try {
+                return WorkflowModel.fromMap(doc.data());
+              } catch (e) {
+                print('Error parsing workflow ${doc.id}: $e');
+                return null;
+              }
+            })
+            .where((w) => w != null)
+            .cast<WorkflowModel>()
+            .toList();
+
+        // Filter by userId if provided (client-side filter for flexibility)
+        if (userId != null && userId.isNotEmpty) {
+          workflows = workflows.where((w) => w.initiatorId == userId).toList();
+        }
+
+        return {
+          'total': workflows.length,
+          'pending': workflows.where((w) => w.status == WorkflowStatus.pending).length,
+          'inProgress': workflows.where((w) => w.status == WorkflowStatus.inProgress).length,
+          'completed': workflows.where((w) => w.status == WorkflowStatus.completed).length,
+          'approved': workflows.where((w) => w.status == WorkflowStatus.approved).length,
+          'rejected': workflows.where((w) => w.status == WorkflowStatus.rejected).length,
+        };
+      } catch (e) {
+        print('Error in workflow stats stream map: $e');
+        return <String, int>{
+          'total': 0,
+          'pending': 0,
+          'inProgress': 0,
+          'completed': 0,
+          'approved': 0,
+          'rejected': 0,
+        };
+      }
+    });
   }
 
   // Private method to notify about workflow status changes

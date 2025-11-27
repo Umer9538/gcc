@@ -320,21 +320,11 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                forceLtr
-                    ? Directionality(
-                        textDirection: TextDirection.ltr,
-                        child: Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Text(
-                            value.isNotEmpty ? value : '-',
-                            style: AppTextStyles.bodyMedium,
-                          ),
-                        ),
-                      )
-                    : Text(
-                        value.isNotEmpty ? value : '-',
-                        style: AppTextStyles.bodyMedium,
-                      ),
+                Text(
+                  value.isNotEmpty ? value : '-',
+                  style: AppTextStyles.bodyMedium,
+                  textDirection: forceLtr ? TextDirection.ltr : null,
+                ),
               ],
             ),
           ),

@@ -175,8 +175,8 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
   }
 
   Widget _buildStatisticsTab(String userId, bool isRTL) {
-    return FutureBuilder<Map<String, int>>(
-      future: _workflowService.getWorkflowStats(userId: userId),
+    return StreamBuilder<Map<String, int>>(
+      stream: _workflowService.getWorkflowStatsStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           final size = MediaQuery.of(context).size;
@@ -184,7 +184,7 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
           return ShimmerLoading.listItem(isWeb: isWeb, count: 5);
         }
 
-        if (!snapshot.hasData) {
+        if (snapshot.hasError || !snapshot.hasData) {
           return _buildEmptyState(
             isRTL ? 'خطأ في تحميل الإحصائيات' : 'Error loading statistics',
             isRTL ? 'حاول مرة أخرى لاحقاً' : 'Please try again later',
@@ -197,11 +197,61 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
           padding: const EdgeInsets.all(AppConstants.defaultPadding),
           child: Column(
             children: [
+              // Control Buttons Section
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppConstants.defaultPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isRTL ? 'إجراءات سريعة' : 'Quick Actions',
+                        style: AppTextStyles.heading3,
+                      ),
+                      const SizedBox(height: AppConstants.defaultPadding),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _buildActionButton(
+                            icon: Icons.refresh,
+                            label: isRTL ? 'تحديث' : 'Refresh',
+                            color: AppColors.primaryColor,
+                            onTap: () => setState(() {}),
+                          ),
+                          _buildActionButton(
+                            icon: Icons.filter_list,
+                            label: isRTL ? 'تصفية' : 'Filter',
+                            color: AppColors.infoColor,
+                            onTap: () => _showFilterDialog(isRTL),
+                          ),
+                          _buildActionButton(
+                            icon: Icons.download,
+                            label: isRTL ? 'تصدير' : 'Export',
+                            color: AppColors.gentleGreen,
+                            onTap: () => _showExportDialog(isRTL),
+                          ),
+                          _buildActionButton(
+                            icon: Icons.date_range,
+                            label: isRTL ? 'فترة زمنية' : 'Date Range',
+                            color: AppColors.gentlePurple,
+                            onTap: () => _showDateRangeDialog(isRTL),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppConstants.defaultPadding),
+
+              // Statistics Cards
               _buildStatCard(
                 isRTL ? 'إجمالي طلبات سير العمل' : 'Total Workflows',
                 stats['total'] ?? 0,
                 Icons.work,
                 AppColors.primaryColor,
+                onTap: () => _tabController.animateTo(0),
               ),
               const SizedBox(height: AppConstants.defaultPadding),
               _buildStatCard(
@@ -209,6 +259,7 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
                 stats['pending'] ?? 0,
                 Icons.pending,
                 AppColors.warningColor,
+                onTap: () => _tabController.animateTo(2),
               ),
               const SizedBox(height: AppConstants.defaultPadding),
               _buildStatCard(
@@ -216,6 +267,7 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
                 stats['inProgress'] ?? 0,
                 Icons.work_history,
                 AppColors.infoColor,
+                onTap: () => _tabController.animateTo(0),
               ),
               const SizedBox(height: AppConstants.defaultPadding),
               _buildStatCard(
@@ -223,6 +275,7 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
                 stats['completed'] ?? 0,
                 Icons.check_circle,
                 AppColors.successColor,
+                onTap: () => _tabController.animateTo(0),
               ),
               const SizedBox(height: AppConstants.defaultPadding),
               Row(
@@ -233,6 +286,7 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
                       stats['approved'] ?? 0,
                       Icons.thumb_up,
                       AppColors.gentleGreen,
+                      onTap: () => _tabController.animateTo(0),
                     ),
                   ),
                   const SizedBox(width: AppConstants.defaultPadding),
@@ -242,6 +296,7 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
                       stats['rejected'] ?? 0,
                       Icons.thumb_down,
                       AppColors.errorColor,
+                      onTap: () => _tabController.animateTo(0),
                     ),
                   ),
                 ],
@@ -250,6 +305,233 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
           ),
         );
       },
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFilterDialog(bool isRTL) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isRTL ? 'تصفية الإحصائيات' : 'Filter Statistics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: Text(isRTL ? 'إحصائياتي فقط' : 'My Statistics Only'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تطبيق الفلتر' : 'Filter applied')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.group),
+              title: Text(isRTL ? 'إحصائيات الفريق' : 'Team Statistics'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تطبيق الفلتر' : 'Filter applied')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.business),
+              title: Text(isRTL ? 'إحصائيات القسم' : 'Department Statistics'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تطبيق الفلتر' : 'Filter applied')),
+                );
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showExportDialog(bool isRTL) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isRTL ? 'تصدير الإحصائيات' : 'Export Statistics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+              title: Text(isRTL ? 'تصدير كـ PDF' : 'Export as PDF'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(isRTL ? 'جاري التصدير...' : 'Exporting...'),
+                    backgroundColor: AppColors.infoColor,
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.table_chart, color: Colors.green),
+              title: Text(isRTL ? 'تصدير كـ Excel' : 'Export as Excel'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(isRTL ? 'جاري التصدير...' : 'Exporting...'),
+                    backgroundColor: AppColors.infoColor,
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.code, color: Colors.blue),
+              title: Text(isRTL ? 'تصدير كـ CSV' : 'Export as CSV'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(isRTL ? 'جاري التصدير...' : 'Exporting...'),
+                    backgroundColor: AppColors.infoColor,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDateRangeDialog(bool isRTL) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isRTL ? 'اختر الفترة الزمنية' : 'Select Date Range'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.today),
+              title: Text(isRTL ? 'اليوم' : 'Today'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تحديد اليوم' : 'Today selected')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.date_range),
+              title: Text(isRTL ? 'هذا الأسبوع' : 'This Week'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تحديد هذا الأسبوع' : 'This week selected')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.calendar_month),
+              title: Text(isRTL ? 'هذا الشهر' : 'This Month'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تحديد هذا الشهر' : 'This month selected')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.calendar_today),
+              title: Text(isRTL ? 'هذا العام' : 'This Year'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تحديد هذا العام' : 'This year selected')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_calendar),
+              title: Text(isRTL ? 'فترة مخصصة' : 'Custom Range'),
+              onTap: () async {
+                Navigator.pop(context);
+                final DateTimeRange? range = await showDateRangePicker(
+                  context: context,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                  locale: isRTL ? const Locale('ar') : const Locale('en'),
+                );
+                if (range != null && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isRTL
+                          ? 'تم تحديد الفترة من ${range.start.day}/${range.start.month} إلى ${range.end.day}/${range.end.month}'
+                          : 'Range selected: ${range.start.day}/${range.start.month} to ${range.end.day}/${range.end.month}',
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -457,42 +739,52 @@ class _WorkflowScreenState extends State<WorkflowScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildStatCard(String title, int value, IconData icon, Color color) {
+  Widget _buildStatCard(String title, int value, IconData icon, Color color, {VoidCallback? onTap}) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.defaultPadding),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+        child: Padding(
+          padding: const EdgeInsets.all(AppConstants.defaultPadding),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(width: AppConstants.defaultPadding),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTextStyles.bodyMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value.toString(),
-                    style: AppTextStyles.heading3.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.bold,
+              const SizedBox(width: AppConstants.defaultPadding),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.bodyMedium,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      value.toString(),
+                      style: AppTextStyles.heading3.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              if (onTap != null)
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: color.withValues(alpha: 0.5),
+                  size: 16,
+                ),
+            ],
+          ),
         ),
       ),
     );

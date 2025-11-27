@@ -30,10 +30,40 @@ class DocumentService {
       return snapshot.docs
           .map((doc) => DocumentModel.fromMap(doc.data()))
           .where((document) {
-        return document.allowedRoles.isEmpty ||
-            document.allowedRoles.any((role) => userRoles.contains(role)) ||
+        // User can always see their own documents
+        if (document.uploadedById == userId) {
+          return true;
+        }
+
+        // If both lists are empty, document is accessible to everyone
+        if (document.allowedRoles.isEmpty && document.allowedDepartments.isEmpty) {
+          return true;
+        }
+
+        // Check role-based access
+        bool hasRoleAccess = document.allowedRoles.isEmpty ||
+            document.allowedRoles.any((role) => userRoles.contains(role));
+
+        // Check department-based access
+        bool hasDepartmentAccess = document.allowedDepartments.isEmpty ||
             document.allowedDepartments.contains(userDepartment);
+
+        // User needs to satisfy at least one restriction that's set
+        // If roles are set, check roles; if departments are set, check departments
+        if (document.allowedRoles.isNotEmpty && document.allowedDepartments.isNotEmpty) {
+          // Both restrictions set - need either role OR department match
+          return hasRoleAccess || hasDepartmentAccess;
+        } else if (document.allowedRoles.isNotEmpty) {
+          // Only role restriction set
+          return hasRoleAccess;
+        } else {
+          // Only department restriction set
+          return hasDepartmentAccess;
+        }
       }).toList();
+    }).handleError((error) {
+      print('Error getting documents for user: $error');
+      return <DocumentModel>[];
     });
   }
 
@@ -46,7 +76,11 @@ class DocumentService {
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => DocumentModel.fromMap(doc.data()))
-            .toList());
+            .toList())
+        .handleError((error) {
+          print('Error getting documents by category: $error');
+          return <DocumentModel>[];
+        });
   }
 
   Future<String> uploadDocument({
@@ -233,7 +267,11 @@ class DocumentService {
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => DocumentRequestModel.fromMap(doc.data()))
-            .toList());
+            .toList())
+        .handleError((error) {
+          print('Error getting document requests: $error');
+          return <DocumentRequestModel>[];
+        });
   }
 
   Stream<List<DocumentRequestModel>> getUserDocumentRequests(String userId) {
@@ -244,7 +282,11 @@ class DocumentService {
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => DocumentRequestModel.fromMap(doc.data()))
-            .toList());
+            .toList())
+        .handleError((error) {
+          print('Error getting user document requests: $error');
+          return <DocumentRequestModel>[];
+        });
   }
 
   Future<void> approveDocumentRequest({
@@ -399,6 +441,9 @@ class DocumentService {
       }
 
       return relevantRequests;
+    }).handleError((error) {
+      print('Error getting pending requests for user: $error');
+      return <DocumentRequestModel>[];
     });
   }
 
@@ -423,5 +468,85 @@ class DocumentService {
       'rejectedRequests': userRequests.where((r) => r.status == RequestStatus.rejected).length,
       'requestsToReview': pendingRequests.length,
     };
+  }
+
+  // Get document statistics as stream (real-time updates)
+  Stream<Map<String, int>> getDocumentStatsStream({
+    required String userId,
+    required String userDepartment,
+    required List<String> userRoles,
+  }) {
+    // Listen to documents collection for real-time stats updates
+    // Using simple snapshots without complex queries to avoid index issues
+    return _firestore
+        .collection('documents')
+        .snapshots()
+        .asyncMap((snapshot) async {
+      try {
+        // Get accessible documents count - filter client-side for flexibility
+        final documents = snapshot.docs
+            .map((doc) => DocumentModel.fromMap(doc.data()))
+            .where((document) {
+          // Skip inactive documents
+          if (!document.isActive) return false;
+
+          if (document.uploadedById == userId) return true;
+          if (document.allowedRoles.isEmpty && document.allowedDepartments.isEmpty) return true;
+
+          bool hasRoleAccess = document.allowedRoles.isEmpty ||
+              document.allowedRoles.any((role) => userRoles.contains(role));
+          bool hasDepartmentAccess = document.allowedDepartments.isEmpty ||
+              document.allowedDepartments.contains(userDepartment);
+
+          if (document.allowedRoles.isNotEmpty && document.allowedDepartments.isNotEmpty) {
+            return hasRoleAccess || hasDepartmentAccess;
+          } else if (document.allowedRoles.isNotEmpty) {
+            return hasRoleAccess;
+          } else {
+            return hasDepartmentAccess;
+          }
+        }).toList();
+
+        // Get user requests
+        final userRequestsSnapshot = await _firestore
+            .collection('document_requests')
+            .where('requesterId', isEqualTo: userId)
+            .get();
+        final userRequests = userRequestsSnapshot.docs
+            .map((doc) => DocumentRequestModel.fromMap(doc.data()))
+            .toList();
+
+        // Get pending requests to review (for document owners)
+        final pendingSnapshot = await _firestore
+            .collection('document_requests')
+            .where('status', isEqualTo: RequestStatus.pending.toString())
+            .get();
+        int requestsToReview = 0;
+        for (var doc in pendingSnapshot.docs) {
+          final request = DocumentRequestModel.fromMap(doc.data());
+          final document = await getDocumentById(request.documentId);
+          if (document?.uploadedById == userId) {
+            requestsToReview++;
+          }
+        }
+
+        return {
+          'accessibleDocuments': documents.length,
+          'pendingRequests': userRequests.where((r) => r.status == RequestStatus.pending).length,
+          'approvedRequests': userRequests.where((r) => r.status == RequestStatus.approved).length,
+          'rejectedRequests': userRequests.where((r) => r.status == RequestStatus.rejected).length,
+          'requestsToReview': requestsToReview,
+        };
+      } catch (e) {
+        print('Error in document stats stream asyncMap: $e');
+        return <String, int>{
+          'accessibleDocuments': 0,
+          'pendingRequests': 0,
+          'approvedRequests': 0,
+          'rejectedRequests': 0,
+          'requestsToReview': 0,
+        };
+      }
+    });
   }
 }

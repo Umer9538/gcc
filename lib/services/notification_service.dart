@@ -219,8 +219,21 @@ class NotificationService {
         .limit(50)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => NotificationModel.fromJson(doc.data()))
-            .toList());
+            .map((doc) {
+              try {
+                return NotificationModel.fromJson(doc.data());
+              } catch (e) {
+                print('Error parsing notification ${doc.id}: $e');
+                return null;
+              }
+            })
+            .where((n) => n != null)
+            .cast<NotificationModel>()
+            .toList())
+        .handleError((error) {
+          print('Error getting user notifications: $error');
+          return <NotificationModel>[];
+        });
   }
 
   // Get unread notification count stream

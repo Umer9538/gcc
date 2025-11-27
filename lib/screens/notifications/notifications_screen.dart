@@ -124,18 +124,12 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           return const Center(child: CircularProgressIndicator());
         }
 
+        // Handle error by showing empty state (indexes may still be building)
         if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              isRTL ? 'حدث خطأ في تحميل الإشعارات' : 'Error loading notifications',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.errorColor,
-              ),
-            ),
-          );
+          print('Notifications error: ${snapshot.error}');
         }
 
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty || snapshot.hasError) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

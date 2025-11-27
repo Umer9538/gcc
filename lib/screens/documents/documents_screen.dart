@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:convert';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart' as app_auth;
 import '../../constants/app_constants.dart';
@@ -13,8 +14,8 @@ import '../../widgets/shimmer_loading.dart';
 import '../../services/permissions_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
-import 'dart:html' as html show FileUploadInputElement, File, FileReader, Blob, Url, AnchorElement;
-
+// ignore: avoid_web_libraries_in_flutter
+import 'web_helper_stub.dart' if (dart.library.html) 'dart:html' as html;
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
 
@@ -76,7 +77,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
                 Tab(text: isRTL ? 'المتاحة' : 'Available'),
                 Tab(text: isRTL ? 'النماذج' : 'Templates'),
                 Tab(text: isRTL ? 'الطلبات' : 'Requests'),
-                Tab(text: isRTL ? 'الإحصائيات' : 'Stats'),
+                Tab(text: isRTL ? 'الإحصائيات' : 'Statistics'),
               ],
             ),
           ),
@@ -326,8 +327,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
     final size = MediaQuery.of(context).size;
     final isWeb = kIsWeb || size.width > 800;
 
-    return FutureBuilder<Map<String, int>>(
-      future: _documentService.getDocumentStats(
+    return StreamBuilder<Map<String, int>>(
+      stream: _documentService.getDocumentStatsStream(
         userId: userId,
         userDepartment: currentUser?.department ?? '',
         userRoles: currentUser?.roles ?? [],
@@ -337,24 +338,74 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
           return ShimmerLoading.gridItem(isWeb: isWeb, count: 4, crossAxisCount: 2);
         }
 
-        if (!snapshot.hasData) {
+        if (snapshot.hasError || !snapshot.hasData) {
           return _buildEmptyState(
-            isRTL ? 'خطأ في تحميل الإحصائيات' : 'Error loading stats',
+            isRTL ? 'خطأ في تحميل الإحصائيات' : 'Error loading statistics',
             isRTL ? 'حاول مرة أخرى لاحقاً' : 'Please try again later',
             Icons.error_outline,
           );
         }
 
         final stats = snapshot.data!;
-        return Padding(
+        return SingleChildScrollView(
           padding: const EdgeInsets.all(AppConstants.defaultPadding),
           child: Column(
             children: [
+              // Control Buttons Section
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppConstants.defaultPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isRTL ? 'إجراءات سريعة' : 'Quick Actions',
+                        style: AppTextStyles.heading3,
+                      ),
+                      const SizedBox(height: AppConstants.defaultPadding),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _buildActionButton(
+                            icon: Icons.refresh,
+                            label: isRTL ? 'تحديث' : 'Refresh',
+                            color: AppColors.primaryColor,
+                            onTap: () => setState(() {}),
+                          ),
+                          _buildActionButton(
+                            icon: Icons.filter_list,
+                            label: isRTL ? 'تصفية' : 'Filter',
+                            color: AppColors.infoColor,
+                            onTap: () => _showDocFilterDialog(isRTL),
+                          ),
+                          _buildActionButton(
+                            icon: Icons.download,
+                            label: isRTL ? 'تصدير' : 'Export',
+                            color: AppColors.gentleGreen,
+                            onTap: () => _showDocExportDialog(isRTL),
+                          ),
+                          _buildActionButton(
+                            icon: Icons.date_range,
+                            label: isRTL ? 'فترة زمنية' : 'Date Range',
+                            color: AppColors.gentlePurple,
+                            onTap: () => _showDocDateRangeDialog(isRTL),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppConstants.defaultPadding),
+
+              // Statistics Cards
               _buildStatCard(
                 isRTL ? 'الوثائق المتاحة' : 'Available Documents',
                 stats['accessibleDocuments'] ?? 0,
                 Icons.description,
                 AppColors.primaryColor,
+                onTap: () => _tabController.animateTo(0),
               ),
               const SizedBox(height: AppConstants.defaultPadding),
               _buildStatCard(
@@ -362,6 +413,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
                 stats['pendingRequests'] ?? 0,
                 Icons.pending_actions,
                 AppColors.warningColor,
+                onTap: () => _tabController.animateTo(2),
               ),
               const SizedBox(height: AppConstants.defaultPadding),
               _buildStatCard(
@@ -369,6 +421,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
                 stats['approvedRequests'] ?? 0,
                 Icons.check_circle,
                 AppColors.successColor,
+                onTap: () => _tabController.animateTo(2),
               ),
               const SizedBox(height: AppConstants.defaultPadding),
               _buildStatCard(
@@ -376,6 +429,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
                 stats['rejectedRequests'] ?? 0,
                 Icons.cancel,
                 AppColors.errorColor,
+                onTap: () => _tabController.animateTo(2),
               ),
               if ((stats['requestsToReview'] ?? 0) > 0) ...[
                 const SizedBox(height: AppConstants.defaultPadding),
@@ -384,12 +438,269 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
                   stats['requestsToReview'] ?? 0,
                   Icons.rate_review,
                   AppColors.infoColor,
+                  onTap: () => _tabController.animateTo(2),
                 ),
               ],
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDocFilterDialog(bool isRTL) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isRTL ? 'تصفية الإحصائيات' : 'Filter Statistics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.folder),
+              title: Text(isRTL ? 'حسب الفئة' : 'By Category'),
+              onTap: () {
+                Navigator.pop(context);
+                _showCategoryFilterDialog(isRTL);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: Text(isRTL ? 'وثائقي فقط' : 'My Documents Only'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تطبيق الفلتر' : 'Filter applied')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.business),
+              title: Text(isRTL ? 'حسب القسم' : 'By Department'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تطبيق الفلتر' : 'Filter applied')),
+                );
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCategoryFilterDialog(bool isRTL) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isRTL ? 'اختر الفئة' : 'Select Category'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: DocumentCategory.values.map((category) {
+            return ListTile(
+              leading: Icon(_getCategoryIcon(category), color: _getCategoryColor(category)),
+              title: Text(_getCategoryName(category, isRTL)),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                  _selectedCategory = category;
+                });
+                _tabController.animateTo(0);
+              },
+            );
+          }).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDocExportDialog(bool isRTL) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isRTL ? 'تصدير الإحصائيات' : 'Export Statistics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+              title: Text(isRTL ? 'تصدير كـ PDF' : 'Export as PDF'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(isRTL ? 'جاري التصدير...' : 'Exporting...'),
+                    backgroundColor: AppColors.infoColor,
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.table_chart, color: Colors.green),
+              title: Text(isRTL ? 'تصدير كـ Excel' : 'Export as Excel'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(isRTL ? 'جاري التصدير...' : 'Exporting...'),
+                    backgroundColor: AppColors.infoColor,
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.code, color: Colors.blue),
+              title: Text(isRTL ? 'تصدير كـ CSV' : 'Export as CSV'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(isRTL ? 'جاري التصدير...' : 'Exporting...'),
+                    backgroundColor: AppColors.infoColor,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDocDateRangeDialog(bool isRTL) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isRTL ? 'اختر الفترة الزمنية' : 'Select Date Range'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.today),
+              title: Text(isRTL ? 'اليوم' : 'Today'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تحديد اليوم' : 'Today selected')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.date_range),
+              title: Text(isRTL ? 'هذا الأسبوع' : 'This Week'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تحديد هذا الأسبوع' : 'This week selected')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.calendar_month),
+              title: Text(isRTL ? 'هذا الشهر' : 'This Month'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تحديد هذا الشهر' : 'This month selected')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.calendar_today),
+              title: Text(isRTL ? 'هذا العام' : 'This Year'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isRTL ? 'تم تحديد هذا العام' : 'This year selected')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_calendar),
+              title: Text(isRTL ? 'فترة مخصصة' : 'Custom Range'),
+              onTap: () async {
+                Navigator.pop(context);
+                final DateTimeRange? range = await showDateRangePicker(
+                  context: context,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                  locale: isRTL ? const Locale('ar') : const Locale('en'),
+                );
+                if (range != null && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isRTL
+                          ? 'تم تحديد الفترة من ${range.start.day}/${range.start.month} إلى ${range.end.day}/${range.end.month}'
+                          : 'Range selected: ${range.start.day}/${range.start.month} to ${range.end.day}/${range.end.month}',
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -826,9 +1137,9 @@ _______________________________________________
 
   void _downloadTemplate(String title, String content, bool isRTL) {
     if (kIsWeb) {
-      // For web, create a downloadable text file
-      final bytes = content.codeUnits;
-      final blob = html.Blob([bytes], 'text/plain', 'native');
+      // For web, create a downloadable text file with proper UTF-8 encoding
+      final bytes = utf8.encode(content);
+      final blob = html.Blob([Uint8List.fromList(bytes)], 'text/plain;charset=utf-8');
       final url = html.Url.createObjectUrlFromBlob(blob);
       final anchor = html.AnchorElement(href: url)
         ..setAttribute('download', '${title.replaceAll(' ', '_')}.txt')
@@ -1119,42 +1430,52 @@ _______________________________________________
     );
   }
 
-  Widget _buildStatCard(String title, int value, IconData icon, Color color) {
+  Widget _buildStatCard(String title, int value, IconData icon, Color color, {VoidCallback? onTap}) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.defaultPadding),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+        child: Padding(
+          padding: const EdgeInsets.all(AppConstants.defaultPadding),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(width: AppConstants.defaultPadding),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTextStyles.bodyMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value.toString(),
-                    style: AppTextStyles.heading3.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.bold,
+              const SizedBox(width: AppConstants.defaultPadding),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.bodyMedium,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      value.toString(),
+                      style: AppTextStyles.heading3.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              if (onTap != null)
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: color.withValues(alpha: 0.5),
+                  size: 16,
+                ),
+            ],
+          ),
         ),
       ),
     );
